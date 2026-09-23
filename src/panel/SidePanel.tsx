@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useExplorer } from '../state/ExplorerContext'
+import { LayersTab } from './LayersTab'
 import { MainstemSummary } from './MainstemSummary'
 import { SearchTab } from './SearchTab'
 
-type Tab = 'explore' | 'search'
+type Tab = 'explore' | 'search' | 'layers'
 
 export function SidePanel() {
   const { selectedMainstem } = useExplorer()
@@ -55,18 +56,28 @@ export function SidePanel() {
         >
           Search
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'layers'}
+          className={tab === 'layers' ? 'active' : ''}
+          onClick={() => setTab('layers')}
+        >
+          Layers
+        </button>
       </div>
 
       {tab === 'search' ? (
         <SearchTab />
+      ) : tab === 'layers' ? (
+        <LayersTab />
       ) : selectedMainstem ? (
         <MainstemSummary />
       ) : (
         <div className="side-panel-empty">
-          <h1>Geoconnex Explorer</h1>
+          <h1>Geoconnex Features</h1>
           <p>
-            Click a river on the map to see the features linked to it in the Geoconnex graph.
-            Click any feature to open its raw RDF neighborhood, one hop at a time.
+            Click a river on the map to get started.{' '}
           </p>
         </div>
       )}

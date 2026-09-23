@@ -74,6 +74,17 @@
   padding: 20px;
   box-shadow: var(--shadow);
   z-index: 2;
+  transition: width 0.2s ease;
+}
+
+/* An expanded dataset record needs room for long URLs and nested shapes. Grow
+   over the map, but stop short of the left side panel (380px + gutters). */
+.node-panel-wide {
+  width: max(460px, min(1100px, calc(100vw - 412px)));
+}
+
+.node-panel-wide .dataset-table > thead > tr > th:last-child {
+  width: 190px;
 }
 
 .node-panel-controls {
@@ -158,6 +169,10 @@
 
 .side-panel-tabs button:hover {
   color: var(--text-h);
+}
+
+.side-panel-tabs button.tab-empty {
+  opacity: 0.45;
 }
 
 .side-panel-tabs button.active {
@@ -276,6 +291,13 @@
   margin: 0;
 }
 
+.panel-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .icon-button {
   flex: none;
   display: inline-flex;
@@ -290,6 +312,49 @@
   border-radius: 8px;
   color: var(--text-h);
   cursor: pointer;
+}
+
+.panel-header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.icon-button.active {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.feature-filter {
+  position: relative;
+  margin: 4px 0 6px;
+}
+
+.feature-filter input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 70px 7px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-h);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.feature-filter input:focus {
+  outline: none;
+  border-color: var(--accent-border);
+}
+
+.feature-filter-count {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: var(--text);
+  pointer-events: none;
 }
 
 .icon-button:hover {
@@ -573,59 +638,151 @@
   overflow-wrap: anywhere;
 }
 
-.legend-toggle {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  background: var(--panel-bg);
-  backdrop-filter: blur(14px) saturate(1.4);
-  -webkit-backdrop-filter: blur(14px) saturate(1.4);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  cursor: pointer;
-  box-shadow: var(--shadow);
+.layers-coming-soon {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
 }
 
-.legend-toggle:hover {
-  border-color: var(--accent-border);
+.dataset-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
 }
 
-.legend-panel {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 3;
-  width: 300px;
-  max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 32px);
-  overflow-y: auto;
-  background: var(--panel-bg);
-  backdrop-filter: blur(14px) saturate(1.4);
-  -webkit-backdrop-filter: blur(14px) saturate(1.4);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 20px;
-  padding-right: 44px;
-  box-shadow: var(--shadow);
+.dataset-table > thead > tr > th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding: 4px 6px;
 }
 
-.legend-panel h3 {
-  margin: 0 0 8px;
-  font-size: 15px;
+.dataset-table > thead > tr > th:first-child {
+  width: 14px;
+}
+
+.dataset-table > thead > tr > th:nth-child(3) {
+  width: 30%;
+}
+
+.dataset-table > thead > tr > th:last-child {
+  width: 88px;
+}
+
+.dataset-table > tbody > tr > td {
+  border-bottom: 1px solid var(--border);
+  padding: 6px;
+  vertical-align: top;
+  overflow-wrap: anywhere;
   color: var(--text-h);
 }
 
-.legend-panel-close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
+.dataset-row {
+  cursor: pointer;
+}
+
+.dataset-table a {
+  color: var(--accent);
+}
+
+.dataset-row:hover > td,
+.dataset-row.open > td {
+  background: var(--accent-bg);
+}
+
+.dataset-table > tbody > tr.dataset-row.open > td {
+  border-bottom: none;
+}
+
+.dataset-row-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.dataset-description {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.dataset-table > tbody > tr > td.dataset-coverage {
+  font-size: 12px;
+  overflow-wrap: normal;
+}
+
+.dataset-table > tbody > tr.dataset-detail-row > td {
+  background: var(--accent-bg);
+  padding: 4px 8px 12px 26px;
+}
+
+.shape-grid {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.shape-grid dt {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.shape-grid dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-h);
+}
+
+.shape-nested-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shape-nested-list > .shape-grid {
+  border-left: 2px solid var(--accent-border);
+  padding-left: 8px;
+}
+
+.shape-values {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shape-empty {
+  color: var(--text);
+}
+
+.shape-missing {
+  color: #d97706;
+}
+
+.shape-more,
+.show-more-button {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+}
+
+.show-more-button {
+  margin-top: 10px;
+  font-size: 13px;
 }
 
 @media (max-width: 720px) {
@@ -644,14 +801,6 @@
     left: 12px;
     right: 12px;
     bottom: 12px;
-    width: auto;
-    max-width: none;
-  }
-
-  .legend-panel {
-    top: 12px;
-    left: 12px;
-    right: 12px;
     width: auto;
     max-width: none;
   }

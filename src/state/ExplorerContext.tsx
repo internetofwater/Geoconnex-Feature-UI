@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useReducer, useState, type ReactNode } from 'react'
 import { buildSitemapColorScale, type SitemapColorScale } from '../lib/colors'
+import { fetchDatasetSummaries, type DatasetSummary } from '../lib/datasets'
 import {
   fetchMainstemFeatures,
   searchFeatures,
@@ -53,6 +54,7 @@ async function fetchOneHop(uri: string, signal: AbortSignal): Promise<TripleRow[
 interface ExplorerContextValue extends ExplorerState {
   mainstemResource: ResourceState<GraphFeature[]>
   nodeResource: ResourceState<TripleRow[]>
+  datasetsResource: ResourceState<DatasetSummary[]>
   searchResource: ResourceState<GraphFeature[]>
   sitemapEntriesResource: ResourceState<SitemapEntry[]>
   sitemapColorScale: SitemapColorScale
@@ -76,6 +78,7 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
     fetchMainstemFeatures,
   )
   const nodeResource = useAsyncResource(state.selectedNode, fetchOneHop)
+  const datasetsResource = useAsyncResource(state.selectedNode, fetchDatasetSummaries)
 
   const sitemapEntriesResource = useAsyncResource('sitemaps', (_key, signal) =>
     fetchSitemapEntries(signal),
@@ -95,6 +98,7 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       ...state,
       mainstemResource,
       nodeResource,
+      datasetsResource,
       searchResource,
       sitemapEntriesResource,
       sitemapColorScale,
@@ -117,6 +121,7 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       state,
       mainstemResource,
       nodeResource,
+      datasetsResource,
       searchResource,
       sitemapEntriesResource,
       sitemapColorScale,

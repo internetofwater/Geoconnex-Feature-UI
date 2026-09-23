@@ -4,8 +4,10 @@ import {
   Popup as MaplibrePopup,
   type ExpressionSpecification,
   type MapLayerMouseEvent,
+  setWorkerUrl,
 } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { useEffect, useRef, useState } from 'react'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
 import { sitemapColorExpression } from '../lib/colors'
@@ -44,6 +46,12 @@ import {
   searchResultsLineLayer,
 } from './layers'
 import type { GraphFeature, MainstemFeatureProps } from '../lib/types'
+
+// maplibre locates its worker at runtime relative to its own module URL, which
+// the production bundle doesn't emit (only the dev server, serving node_modules
+// directly, has it). Have Vite bundle the worker — with its shared chunk — as a
+// standalone asset and point maplibre at it explicitly.
+setWorkerUrl(maplibreWorkerUrl)
 
 const BASEMAP_STYLE = 'https://tiles.openfreemap.org/styles/positron'
 

@@ -3,7 +3,6 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { MapView } from './map/MapView'
 import { NodePanel } from './panel/NodePanel'
 import { SidePanel } from './panel/SidePanel'
-import { SitemapsWidget } from './panel/SitemapsWidget'
 import { ExplorerProvider } from './state/ExplorerContext'
 
 const MAP_FALLBACK = (
@@ -21,7 +20,6 @@ function App() {
         </ErrorBoundary>
         <SidePanel />
         <NodePanel />
-        <SitemapsWidget />
       </div>
     </ExplorerProvider>
   )

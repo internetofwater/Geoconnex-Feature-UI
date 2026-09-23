@@ -5,11 +5,6 @@ export function SitemapsList() {
 
   return (
     <div className="sitemaps-list">
-      <p className="panel-status">
-        Every Geoconnex data source has its own color, stable across the map, search results,
-        and feature lists.
-      </p>
-
       {sitemapEntriesResource.status === 'loading' && (
         <p className="panel-status">Loading sources…</p>
       )}

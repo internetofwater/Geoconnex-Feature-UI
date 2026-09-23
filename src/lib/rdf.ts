@@ -1,4 +1,4 @@
-import type { SparqlBinding, SparqlBindingValue, TripleRow } from './types'
+import type { GraphFeature, SparqlBinding, SparqlBindingValue, TripleRow } from './types'
 
 const KNOWN_PREFIXES: Record<string, string> = {
   'https://schema.org/': 'schema',
@@ -68,6 +68,14 @@ export function tripleRowsToCsv(rows: TripleRow[]): string {
   return lines.join('\r\n')
 }
 
-function csvField(value: string): string {
+export function featuresToCsv(features: GraphFeature[]): string {
+  const lines = ['feature,iri']
+  for (const feature of features) {
+    lines.push([feature.name ?? '', feature.uri].map(csvField).join(','))
+  }
+  return lines.join('\r\n')
+}
+
+export function csvField(value: string): string {
   return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
 }

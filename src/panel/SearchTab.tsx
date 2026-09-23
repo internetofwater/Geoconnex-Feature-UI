@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { colorForSitemap } from '../lib/colors'
 import { normalizeSitemapId } from '../lib/sitemaps'
 import { useExplorer } from '../state/ExplorerContext'
+import { useFeatureFilter } from './FeatureFilter'
 
 export function SearchTab() {
   const {
@@ -33,6 +34,7 @@ export function SearchTab() {
   }
 
   const isSearching = searchResource.status === 'loading'
+  const filter = useFeatureFilter(searchResource.data ?? [], searchResource.data)
 
   return (
     <div className="search-tab">
@@ -67,7 +69,7 @@ export function SearchTab() {
             checked={limitToView}
             onChange={(e) => setLimitToView(e.target.checked)}
           />
-          Limit to map view
+          Restrict search to current map view
         </label>
       </form>
 
@@ -83,34 +85,45 @@ export function SearchTab() {
       {searchResource.status === 'success' && searchResource.data?.length === 0 && (
         <p className="panel-status">No features matched.</p>
       )}
-      {searchResource.status === 'success' &&
-        searchResource.data &&
-        searchResource.data.length > 0 && (
-          <ul className="feature-list">
-            {searchResource.data.map((feature) => (
-              <li key={feature.uri}>
-                <button
-                  type="button"
-                  className={feature.uri === selectedNode ? 'active' : ''}
-                  onClick={() => openFeature(feature)}
-                >
-                  <span
-                    className="feature-list-dot"
-                    style={{ backgroundColor: colorForSitemap(feature.sitemap, sitemapColorScale) }}
-                  />
-                  <span className="feature-list-text">
-                    <span className="feature-list-name">{feature.name || feature.uri}</span>
-                    {feature.sitemap && (
-                      <span className="feature-list-datasets">
-                        {normalizeSitemapId(feature.sitemap)}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+      {searchResource.status === 'success' && !!searchResource.data?.length && (
+        <>
+          <div className="panel-header-row">
+            <p className="panel-status">
+              {searchResource.data.length.toLocaleString()}{' '}
+              {searchResource.data.length === 1 ? 'result' : 'results'}
+            </p>
+            {filter.toggleButton}
+          </div>
+          {filter.input}
+          {filter.emptyMessage}
+        </>
+      )}
+      {searchResource.status === 'success' && filter.filtered.length > 0 && (
+        <ul className="feature-list">
+          {filter.filtered.map((feature) => (
+            <li key={feature.uri}>
+              <button
+                type="button"
+                className={feature.uri === selectedNode ? 'active' : ''}
+                onClick={() => openFeature(feature)}
+              >
+                <span
+                  className="feature-list-dot"
+                  style={{ backgroundColor: colorForSitemap(feature.sitemap, sitemapColorScale) }}
+                />
+                <span className="feature-list-text">
+                  <span className="feature-list-name">{feature.name || feature.uri}</span>
+                  {feature.sitemap && (
+                    <span className="feature-list-datasets">
+                      {normalizeSitemapId(feature.sitemap)}
+                    </span>
+                  )}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

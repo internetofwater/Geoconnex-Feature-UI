@@ -25,11 +25,25 @@ function CheckIcon() {
   )
 }
 
+const SCHEMA_NAME = 'https://schema.org/name'
+
 export function NodeDetails() {
-  const { selectedNode, nodeResource, selectNode } = useExplorer()
+  const { selectedNode, nodeResource, mainstemResource, searchResource, selectNode } =
+    useExplorer()
   const [copied, setCopied] = useState(false)
 
   if (!selectedNode) return null
+
+  // Prefer the node's own schema:name from the graph, then the feature_name the
+  // features API gave it (if it was opened from a feature list), then the IRI.
+  const graphName = nodeResource.data?.find(
+    (row) =>
+      row.direction === 'out' && row.predicate === SCHEMA_NAME && row.other.type === 'literal',
+  )?.other.value
+  const featureName = [...(mainstemResource.data ?? []), ...(searchResource.data ?? [])].find(
+    (feature) => feature.uri === selectedNode && feature.name,
+  )?.name
+  const title = graphName || featureName || compactUri(selectedNode)
 
   const outgoing = nodeResource.data?.filter((row) => row.direction === 'out') ?? []
   const incoming = nodeResource.data?.filter((row) => row.direction === 'in') ?? []
@@ -62,7 +76,7 @@ export function NodeDetails() {
     <div className="node-details">
       <h2 className="node-details-title" title={selectedNode}>
         <a href={selectedNode} target="_blank" rel="noreferrer">
-          {compactUri(selectedNode)}
+          {title}
         </a>
       </h2>
 

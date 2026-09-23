@@ -1,5 +1,9 @@
 import { colorForSitemap } from '../lib/colors'
+import { downloadCsv, slugify } from '../lib/download'
+import { featuresToCsv } from '../lib/rdf'
 import { useExplorer } from '../state/ExplorerContext'
+import { DownloadIcon } from './DownloadIcon'
+import { useFeatureFilter } from './FeatureFilter'
 
 function GraphIcon() {
   return (
@@ -16,6 +20,7 @@ function GraphIcon() {
 export function MainstemSummary() {
   const { selectedMainstem, selectedNode, mainstemResource, sitemapColorScale, selectNode, flyTo } =
     useExplorer()
+  const filter = useFeatureFilter(mainstemResource.data ?? [], selectedMainstem?.uri ?? null)
 
   if (!selectedMainstem) return null
 
@@ -48,7 +53,30 @@ export function MainstemSummary() {
         </div>
       </dl>
 
-      <h3>Associated features</h3>
+      <div className="panel-header-row">
+        <h3>Associated features</h3>
+        {mainstemResource.status === 'success' && !!mainstemResource.data?.length && (
+          <div className="panel-header-actions">
+            {filter.toggleButton}
+            {/* Exports what's listed, so an active filter narrows the CSV too. */}
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() =>
+                downloadCsv(
+                  featuresToCsv(filter.filtered),
+                  `${slugify(selectedMainstem.name_at_outlet) || 'mainstem'}-associated-features.csv`,
+                )
+              }
+              aria-label="Export listed features as CSV"
+              title="Export listed features as CSV"
+            >
+              <DownloadIcon />
+            </button>
+          </div>
+        )}
+      </div>
+      {mainstemResource.status === 'success' && filter.input}
       {mainstemResource.status === 'loading' && (
         <p className="panel-status panel-status-loading">
           <span className="spinner" aria-hidden="true" />
@@ -61,9 +89,10 @@ export function MainstemSummary() {
       {mainstemResource.status === 'success' && mainstemResource.data?.length === 0 && (
         <p className="panel-status">No features linked to this mainstem yet.</p>
       )}
-      {mainstemResource.status === 'success' && mainstemResource.data && (
+      {mainstemResource.status === 'success' && filter.emptyMessage}
+      {mainstemResource.status === 'success' && filter.filtered.length > 0 && (
         <ul className="feature-list">
-          {mainstemResource.data.map((feature) => (
+          {filter.filtered.map((feature) => (
             <li key={feature.uri}>
               <button
                 type="button"

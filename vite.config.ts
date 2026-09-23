@@ -4,6 +4,9 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Relative asset URLs so the build works both at a GitHub Pages project path
+  // (https://<owner>.github.io/<repo>/) and at a custom domain root.
+  base: './',
   plugins: [
     react(),
     babel({ presets: [reactCompilerPreset()] })

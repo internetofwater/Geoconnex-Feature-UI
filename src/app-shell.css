@@ -1,0 +1,649 @@
+.app-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.map-view {
+  width: 100%;
+  height: 100%;
+}
+
+.map-view-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--code-bg);
+  color: var(--text);
+  padding: 24px;
+  text-align: center;
+}
+
+.maplibregl-popup.feature-hover-popup {
+  pointer-events: none;
+}
+
+.maplibregl-popup.feature-hover-popup .maplibregl-popup-content {
+  background: var(--text-h);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+}
+
+.maplibregl-popup.feature-hover-popup .maplibregl-popup-tip {
+  display: none;
+}
+
+.side-panel {
+  position: absolute;
+  top: 16px;
+  left: 0;
+  height: auto;
+  max-height: calc(100vh - 32px);
+  width: 380px;
+  max-width: 90vw;
+  overflow-y: auto;
+  background: var(--panel-bg);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 14px 14px 0;
+  padding: 12px 44px 12px 12px;
+  box-shadow: var(--shadow);
+  z-index: 1;
+}
+
+.node-panel {
+  position: absolute;
+  top: 16px;
+  right: 0;
+  bottom: 16px;
+  width: 460px;
+  max-width: 90vw;
+  overflow-y: auto;
+  background: var(--panel-bg);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 14px 0 0 14px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  z-index: 2;
+}
+
+.node-panel .node-details-title {
+  padding-right: 66px;
+}
+
+.node-panel-controls {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 6px;
+}
+
+.node-panel-toggle-collapsed {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  font-size: 16px;
+  z-index: 2;
+}
+
+.side-panel-toggle {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+}
+
+.side-panel-toggle:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.side-panel .side-panel-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.side-panel-toggle-collapsed {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 36px;
+  height: 36px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  font-size: 16px;
+  z-index: 1;
+}
+
+.side-panel-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.side-panel-tabs button {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 4px 4px 8px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.side-panel-tabs button:hover {
+  color: var(--text-h);
+}
+
+.side-panel-tabs button.active {
+  color: var(--text-h);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
+}
+
+.search-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.search-controls input[type='search'],
+.search-controls select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--code-bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+}
+
+.search-controls input[type='search']:focus,
+.search-controls select:focus {
+  outline: none;
+  border-color: var(--accent-border);
+}
+
+.search-row {
+  display: flex;
+  gap: 8px;
+}
+
+.search-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.search-checkbox input[type='checkbox'] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.search-controls button[type='submit'] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  gap: 7px;
+  white-space: nowrap;
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+}
+
+.search-controls button[type='submit']:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--accent-border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.side-panel-empty h1 {
+  font-size: 26px;
+  margin: 0 0 12px;
+}
+
+.side-panel-empty p {
+  color: var(--text);
+  line-height: 150%;
+}
+
+.mainstem-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mainstem-header h2 {
+  margin: 0;
+}
+
+.icon-button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-top: 2px;
+  padding: 0;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.mainstem-summary h2,
+.node-details-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+.mainstem-summary h2 a,
+.node-details-title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.mainstem-summary h2 a:hover,
+.node-details-title a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.mainstem-stats {
+  display: flex;
+  gap: 24px;
+  margin: 12px 0;
+}
+
+.mainstem-stats dt {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.mainstem-stats dd {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text-h);
+  font-weight: 500;
+}
+
+.panel-status {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.panel-status-error {
+  color: #dc2626;
+}
+
+.panel-status-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.feature-list {
+  /* Breaks out of the card's own padding so rows run edge-to-edge against it,
+     instead of floating with a gutter on both sides. */
+  list-style: none;
+  margin: 8px -44px 0 -12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.feature-list button {
+  width: 100%;
+  text-align: left;
+  background: var(--code-bg);
+  border: none;
+  border-top: 1px solid var(--border);
+  padding: 8px 12px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text-h);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.feature-list li:last-child button {
+  border-bottom: 1px solid var(--border);
+}
+
+.feature-list button:hover {
+  border-color: var(--accent-border);
+}
+
+/* Amber matches the map's selection-highlight ring/outline (see
+   FEATURE_HIGHLIGHT_COLOR in map/layers.ts) so "this is the selected feature"
+   reads as one consistent signal across the list and the map. */
+.feature-list button.active {
+  border-color: #ffb703;
+  background: rgba(255, 183, 3, 0.14);
+}
+
+.feature-list-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.feature-list-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.feature-list-name {
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.feature-list-datasets {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.legend {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.legend li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
+.legend li:hover {
+  background: var(--code-bg);
+}
+
+.legend-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+}
+
+.legend-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.legend-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
+.legend-description {
+  font-size: 11px;
+  line-height: 145%;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.triple-table-section {
+  margin-top: 20px;
+}
+
+.triple-table-section h3 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.triple-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.triple-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding: 4px 6px;
+}
+
+.triple-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 6px;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  color: var(--text-h);
+}
+
+.triple-table td:first-child {
+  width: 1%;
+  white-space: nowrap;
+  padding-right: 14px;
+}
+
+.triple-object-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+}
+
+.sparql-endpoint {
+  font-size: 12px;
+  color: var(--text);
+  margin: 0 0 10px;
+  overflow-wrap: anywhere;
+}
+
+.sparql-endpoint code {
+  font-family: var(--mono);
+  color: var(--text-h);
+}
+
+.sparql-copy-button {
+  display: block;
+  width: 100%;
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.sparql-query {
+  margin: 0;
+  padding: 12px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 150%;
+  color: var(--text-h);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.legend-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--panel-bg);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.legend-toggle:hover {
+  border-color: var(--accent-border);
+}
+
+.legend-panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 3;
+  width: 300px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--panel-bg);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  padding-right: 44px;
+  box-shadow: var(--shadow);
+}
+
+.legend-panel h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: var(--text-h);
+}
+
+.legend-panel-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+@media (max-width: 720px) {
+  .side-panel {
+    top: auto;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    max-height: 45vh;
+    width: auto;
+    max-width: none;
+  }
+
+  .node-panel {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: auto;
+    max-width: none;
+  }
+
+  .legend-panel {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+  }
+}

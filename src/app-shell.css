@@ -76,10 +76,6 @@
   z-index: 2;
 }
 
-.node-panel .node-details-title {
-  padding-right: 66px;
-}
-
 .node-panel-controls {
   position: absolute;
   top: 16px;
@@ -498,6 +494,19 @@
   color: var(--text);
   border-bottom: 1px solid var(--border);
   padding: 4px 6px;
+}
+
+.triple-table-value-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.triple-table-value-header .icon-button {
+  width: 22px;
+  height: 22px;
+  margin: 0;
 }
 
 .triple-table td {

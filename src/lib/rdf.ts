@@ -56,3 +56,18 @@ export function formatLiteralValue(value: SparqlBindingValue): string {
   }
   return value.value
 }
+
+export function tripleRowsToCsv(rows: TripleRow[]): string {
+  const header = ['direction', 'predicate', 'value', 'value_type']
+  const lines = [header.join(',')]
+  for (const row of rows) {
+    lines.push(
+      [row.direction, row.predicate, row.other.value, row.other.type].map(csvField).join(','),
+    )
+  }
+  return lines.join('\r\n')
+}
+
+function csvField(value: string): string {
+  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+}

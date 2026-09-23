@@ -189,12 +189,17 @@ export const associatedFeaturesLineHighlightLayer: LayerSpecification = {
   },
 }
 
+// Colored the same way as associated features (by sitemap source, see
+// sitemapColorExpression) rather than a flat color — searching also clears any
+// selected mainstem's associated features first, so the two layers are never
+// competing for attention on screen at once, and a source's identity color
+// stays consistent everywhere it appears.
 export const searchResultsFillLayer: LayerSpecification = {
   id: SEARCH_FILL_LAYER_ID,
   type: 'fill',
   source: SEARCH_SOURCE_ID,
   paint: {
-    'fill-color': '#aa3bff',
+    'fill-color': OTHER_SITEMAP_COLOR,
     'fill-opacity': 0.35,
   },
 }
@@ -205,7 +210,7 @@ export const searchResultsLineLayer: LayerSpecification = {
   source: SEARCH_SOURCE_ID,
   layout: { 'line-cap': 'round', 'line-join': 'round' },
   paint: {
-    'line-color': '#aa3bff',
+    'line-color': OTHER_SITEMAP_COLOR,
     'line-width': 2,
   },
 }
@@ -217,7 +222,7 @@ export const searchResultsLayer: LayerSpecification = {
   filter: POINT_GEOMETRY_FILTER,
   paint: {
     'circle-radius': 6,
-    'circle-color': '#aa3bff',
+    'circle-color': OTHER_SITEMAP_COLOR,
     'circle-stroke-width': 2,
     'circle-stroke-color': '#ffffff',
   },

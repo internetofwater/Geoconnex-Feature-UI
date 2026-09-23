@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { colorForSitemap } from '../lib/colors'
 import { normalizeSitemapId } from '../lib/sitemaps'
 import { useExplorer } from '../state/ExplorerContext'
 
@@ -9,6 +10,7 @@ export function SearchTab() {
     flyTo,
     searchResource,
     sitemapEntriesResource,
+    sitemapColorScale,
     mapBounds,
     runSearch,
   } = useExplorer()
@@ -92,6 +94,10 @@ export function SearchTab() {
                   className={feature.uri === selectedNode ? 'active' : ''}
                   onClick={() => openFeature(feature)}
                 >
+                  <span
+                    className="feature-list-dot"
+                    style={{ backgroundColor: colorForSitemap(feature.sitemap, sitemapColorScale) }}
+                  />
                   <span className="feature-list-text">
                     <span className="feature-list-name">{feature.name || feature.uri}</span>
                     {feature.sitemap && (

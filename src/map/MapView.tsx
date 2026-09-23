@@ -219,6 +219,9 @@ export function MapView() {
     map.setPaintProperty(ASSOCIATED_LAYER_ID, 'circle-color', expression)
     map.setPaintProperty(ASSOCIATED_FILL_LAYER_ID, 'fill-color', expression)
     map.setPaintProperty(ASSOCIATED_LINE_LAYER_ID, 'line-color', expression)
+    map.setPaintProperty(SEARCH_LAYER_ID, 'circle-color', expression)
+    map.setPaintProperty(SEARCH_FILL_LAYER_ID, 'fill-color', expression)
+    map.setPaintProperty(SEARCH_LINE_LAYER_ID, 'line-color', expression)
   }, [map, sitemapColorScale])
 
   useEffect(() => {

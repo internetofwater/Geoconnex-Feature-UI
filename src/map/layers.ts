@@ -269,3 +269,84 @@ export const riverRunnerLayer: LayerSpecification = {
     'line-opacity': 0.85,
   },
 }
+
+// Analysis results (Analysis tab). Every feature carries its own styling —
+// `color`, `width`, `radius`, `opacity`, `label` — so one set of layers can draw
+// any analysis.
+export const ANALYSIS_SOURCE_ID = 'analysis'
+const LABEL_FONT = ['Noto Sans Regular']
+
+export const analysisLayers: LayerSpecification[] = [
+  {
+    id: 'analysis-fill',
+    type: 'fill',
+    source: ANALYSIS_SOURCE_ID,
+    filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]],
+    paint: {
+      'fill-color': ['coalesce', ['get', 'color'], '#12b0a8'],
+      'fill-opacity': ['coalesce', ['get', 'opacity'], 0.3],
+    },
+  },
+  {
+    id: 'analysis-fill-outline',
+    type: 'line',
+    source: ANALYSIS_SOURCE_ID,
+    filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]],
+    paint: { 'line-color': ['coalesce', ['get', 'color'], '#12b0a8'], 'line-width': 1 },
+  },
+  {
+    id: 'analysis-line',
+    type: 'line',
+    source: ANALYSIS_SOURCE_ID,
+    filter: ['in', ['geometry-type'], ['literal', ['LineString', 'MultiLineString']]],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': ['coalesce', ['get', 'color'], '#ee3d49'],
+      'line-width': ['coalesce', ['get', 'width'], 3],
+    },
+  },
+  {
+    id: 'analysis-point',
+    type: 'circle',
+    source: ANALYSIS_SOURCE_ID,
+    filter: ['==', ['geometry-type'], 'Point'],
+    paint: {
+      'circle-color': ['coalesce', ['get', 'color'], '#1c2954'],
+      'circle-radius': ['coalesce', ['get', 'radius'], 5],
+      'circle-stroke-color': '#ffffff',
+      'circle-stroke-width': 1.5,
+    },
+  },
+  {
+    id: 'analysis-label-point',
+    type: 'symbol',
+    source: ANALYSIS_SOURCE_ID,
+    filter: ['has', 'label'],
+    layout: {
+      'text-field': ['get', 'label'],
+      'text-font': LABEL_FONT,
+      'text-size': 12,
+      'text-offset': [0, 1.1],
+      'text-anchor': 'top',
+      'text-optional': true,
+    },
+    paint: { 'text-color': '#1c2954', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+  },
+]
+
+// The selected mainstem's path to the mouth (Analysis tab). Drawn above the
+// mainstem network but below associated features, in an orange distinct from
+// the coral selected-river highlight.
+export const DOWNSTREAM_PATH_SOURCE_ID = 'downstream-path'
+
+export const downstreamPathLayer: LayerSpecification = {
+  id: 'downstream-path-line',
+  type: 'line',
+  source: DOWNSTREAM_PATH_SOURCE_ID,
+  layout: { 'line-cap': 'round', 'line-join': 'round' },
+  paint: {
+    'line-color': '#f28c28',
+    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 3, 10, 5, 14, 7],
+    'line-opacity': 0.9,
+  },
+}

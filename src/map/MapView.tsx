@@ -50,6 +50,10 @@ import {
   SEARCH_LINE_LAYER_ID,
   SEARCH_SOURCE_ID,
   RIVER_RUNNER_SOURCE_ID,
+  ANALYSIS_SOURCE_ID,
+  analysisLayers,
+  DOWNSTREAM_PATH_SOURCE_ID,
+  downstreamPathLayer,
   POINT_GEOMETRY_FILTER,
   associatedFeaturesFillLayer,
   associatedFeaturesHighlightLayer,
@@ -71,6 +75,29 @@ import type { GraphFeature, MainstemFeatureProps } from '../lib/types'
 // standalone asset and point maplibre at it explicitly.
 setWorkerUrl(maplibreWorkerUrl)
 
+function featureCollectionBounds(
+  collection: FeatureCollection,
+): [[number, number], [number, number]] | null {
+  let west = Infinity
+  let south = Infinity
+  let east = -Infinity
+  let north = -Infinity
+  const visit = (value: unknown) => {
+    if (!Array.isArray(value)) return
+    if (typeof value[0] === 'number') {
+      const [x, y] = value as number[]
+      west = Math.min(west, x)
+      east = Math.max(east, x)
+      south = Math.min(south, y)
+      north = Math.max(north, y)
+    } else value.forEach(visit)
+  }
+  for (const feature of collection.features) {
+    if (feature.geometry && 'coordinates' in feature.geometry) visit(feature.geometry.coordinates)
+  }
+  return west === Infinity ? null : [[west, south], [east, north]]
+}
+
 const APP_SOURCE_IDS = new Set([
   MAINSTEM_SOURCE_ID,
   ASSOCIATED_SOURCE_ID,
@@ -78,6 +105,8 @@ const APP_SOURCE_IDS = new Set([
   TERRAIN_SOURCE_ID,
   HILLSHADE_SOURCE_ID,
   RIVER_RUNNER_SOURCE_ID,
+  ANALYSIS_SOURCE_ID,
+  DOWNSTREAM_PATH_SOURCE_ID,
 ])
 
 // setStyle() replaces every source and layer, including the app's own. Carry
@@ -131,6 +160,9 @@ export function MapView() {
     flyToTarget,
     fitTarget,
     placeMarker,
+    analysisResult,
+    showDownstreamPath,
+    downstreamPathResource,
     selectMainstem,
     selectNode,
     reportMapBounds,
@@ -167,8 +199,17 @@ export function MapView() {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
       })
+      map.addSource(DOWNSTREAM_PATH_SOURCE_ID, {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      })
+      map.addSource(ANALYSIS_SOURCE_ID, {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      })
 
       for (const layer of mainstemLayers) map.addLayer(layer)
+      map.addLayer(downstreamPathLayer)
       map.addLayer(associatedFeaturesFillLayer)
       map.addLayer(associatedFeaturesLineLayer)
       map.addLayer(associatedFeaturesLayer)
@@ -179,6 +220,7 @@ export function MapView() {
       map.addLayer(searchResultsLayer)
       map.addLayer(searchResultsLineHighlightLayer)
       map.addLayer(searchResultsHighlightLayer)
+      for (const layer of analysisLayers) map.addLayer(layer)
 
       const featureLayers = [
         ASSOCIATED_FILL_LAYER_ID,
@@ -351,6 +393,34 @@ export function MapView() {
     map.setPaintProperty(SEARCH_FILL_LAYER_ID, 'fill-color', expression)
     map.setPaintProperty(SEARCH_LINE_LAYER_ID, 'line-color', expression)
   }, [map, sitemapColorScale])
+
+  useEffect(() => {
+    if (!map) return
+    const source = map.getSource(ANALYSIS_SOURCE_ID) as GeoJSONSource | undefined
+    source?.setData(analysisResult?.features ?? { type: 'FeatureCollection', features: [] })
+    const bounds = analysisResult && featureCollectionBounds(analysisResult.features)
+    if (bounds) {
+      map.fitBounds(bounds, {
+        padding: { top: 60, bottom: 60, left: 420, right: 60 },
+        maxZoom: 13,
+        duration: 800,
+      })
+    }
+  }, [map, analysisResult])
+
+  useEffect(() => {
+    if (!map) return
+    const legs = showDownstreamPath ? (downstreamPathResource.data ?? []) : []
+    const source = map.getSource(DOWNSTREAM_PATH_SOURCE_ID) as GeoJSONSource | undefined
+    source?.setData({
+      type: 'FeatureCollection',
+      features: legs.map((leg) => ({
+        type: 'Feature',
+        properties: { name: leg.name },
+        geometry: { type: 'LineString', coordinates: leg.coords },
+      })),
+    })
+  }, [map, showDownstreamPath, downstreamPathResource.data])
 
   useEffect(() => {
     if (!map || !placeMarker) return

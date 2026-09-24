@@ -13,7 +13,8 @@
     "maplibre-gl": "^6.11.1",
     "pmtiles": "^4.5.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "whitebox-wasm": "^0.6.0"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",

@@ -14,6 +14,9 @@ import { runSparqlQuery } from '../lib/sparql'
 import { fetchSitemapEntries, type SitemapEntry } from '../lib/sitemaps'
 import type { GraphFeature, MainstemFeatureProps, ResourceState, TripleRow } from '../lib/types'
 import { DEFAULT_BASEMAP, type BasemapId } from '../map/basemaps'
+import type { AnalysisResult } from '../analysis/analyses'
+import { fetchDownstreamPath } from '../analysis/downstream'
+import type { RunnerLeg } from '../lib/riverRunner'
 import { useAsyncResource } from './useAsyncResource'
 
 interface ExplorerState {
@@ -70,6 +73,12 @@ interface ExplorerContextValue extends ExplorerState {
   fitTarget: Bbox | null
   // Where the place search last landed, marked on the map.
   placeMarker: [number, number] | null
+  // The latest Analysis tab result, if it belongs to the selected mainstem.
+  analysisResult: AnalysisResult | null
+  // Whether the selected mainstem's path to the mouth has been traced, and that
+  // path. Tracing is a one-off for the river it was run on, not a standing mode.
+  showDownstreamPath: boolean
+  downstreamPathResource: ResourceState<RunnerLeg[]>
   mapBounds: Bbox | null
   selectMainstem: (feature: MainstemFeatureProps) => void
   selectNode: (uri: string) => void
@@ -78,6 +87,8 @@ interface ExplorerContextValue extends ExplorerState {
   flyTo: (lon: number, lat: number) => void
   fitBounds: (bbox: Bbox) => void
   setPlaceMarker: (point: [number, number] | null) => void
+  setAnalysisResult: (result: AnalysisResult | null) => void
+  setShowDownstreamPath: (show: boolean) => void
   reportMapBounds: (bounds: Bbox) => void
   toggleSitemap: (sitemap: string) => void
   showAllSitemaps: () => void
@@ -127,6 +138,22 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
   const [flyToTarget, setFlyToTarget] = useState<[number, number] | null>(null)
   const [fitTarget, setFitTarget] = useState<Bbox | null>(null)
   const [placeMarker, setPlaceMarker] = useState<[number, number] | null>(null)
+  // Tagged with the mainstem it was run on, so picking another river drops it
+  // instead of leaving a stale result on the map.
+  const [analysis, setAnalysis] = useState<{ mainstem: string; result: AnalysisResult } | null>(
+    null,
+  )
+  // The mainstem the downstream path was traced for. Picking another river
+  // drops the path rather than tracing again, since each trace is heavy.
+  const [downstreamPathMainstem, setDownstreamPathMainstem] = useState<string | null>(null)
+  const showDownstreamPath =
+    !!downstreamPathMainstem && downstreamPathMainstem === state.selectedMainstem?.uri
+  const downstreamPathResource = useAsyncResource(
+    showDownstreamPath ? downstreamPathMainstem : null,
+    fetchDownstreamPath,
+  )
+  const analysisResult =
+    analysis && analysis.mainstem === state.selectedMainstem?.uri ? analysis.result : null
   const [mapBounds, setMapBounds] = useState<Bbox | null>(null)
 
   const value = useMemo<ExplorerContextValue>(
@@ -145,6 +172,9 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       flyToTarget,
       fitTarget,
       placeMarker,
+      analysisResult,
+      showDownstreamPath,
+      downstreamPathResource,
       mapBounds,
       selectMainstem: (feature) => dispatch({ type: 'SELECT_MAINSTEM', feature }),
       selectNode: (uri) => dispatch({ type: 'SELECT_NODE', uri }),
@@ -159,6 +189,14 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       flyTo: (lon, lat) => setFlyToTarget([lon, lat]),
       fitBounds: (bbox) => setFitTarget(bbox),
       setPlaceMarker,
+      setShowDownstreamPath: (show) =>
+        setDownstreamPathMainstem(show ? (state.selectedMainstem?.uri ?? null) : null),
+      setAnalysisResult: (result) =>
+        setAnalysis(
+          result && state.selectedMainstem
+            ? { mainstem: state.selectedMainstem.uri, result }
+            : null,
+        ),
       reportMapBounds: (bounds) => setMapBounds(bounds),
       toggleSitemap: (sitemap) => {
         if (!mainstemUri) return
@@ -189,6 +227,9 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       flyToTarget,
       fitTarget,
       placeMarker,
+      analysisResult,
+      showDownstreamPath,
+      downstreamPathResource,
       mapBounds,
     ],
   )

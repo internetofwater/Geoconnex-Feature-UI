@@ -16,6 +16,9 @@ function rasterStyle(tiles: string, attribution: string): StyleSpecification {
       basemap: { type: 'raster', tiles: [tiles], tileSize: 256, attribution, maxzoom: 19 },
     },
     layers: [{ id: 'basemap', type: 'raster', source: 'basemap' }],
+    // Raster basemaps have no labels of their own, but analysis labels need a
+    // glyph source; OpenFreeMap's is the one the vector basemaps use.
+    glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
   }
 }
 

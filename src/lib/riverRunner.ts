@@ -12,6 +12,8 @@ export interface RunnerLeg {
   // Cumulative distance (km) at each vertex; last entry is the leg's length.
   cumulative: number[]
   downstream: string | null
+  // Every mainstem below this one, nearest first, down to the terminus.
+  downstreamChain: string[]
 }
 
 const MAINSTEMS_ITEMS = 'https://reference.geoconnex.us/collections/mainstems/items'
@@ -21,6 +23,8 @@ interface RawMainstem {
     properties?: {
       name_at_outlet?: string
       downstream_mainstem_id?: string
+      // A Python-style list literal: "['https://…', 'https://…']".
+      encompassing_mainstem_basins?: string
       lengthkm?: number
       outlet_drainagearea_sqkm?: number
     }
@@ -38,7 +42,8 @@ export async function fetchRunnerLeg(uri: string, signal: AbortSignal): Promise<
   const url = new URL(MAINSTEMS_ITEMS)
   url.search = new URLSearchParams({
     uri,
-    properties: 'name_at_outlet,downstream_mainstem_id,lengthkm,outlet_drainagearea_sqkm',
+    properties:
+      'name_at_outlet,downstream_mainstem_id,lengthkm,outlet_drainagearea_sqkm,encompassing_mainstem_basins',
     f: 'json',
   }).toString()
 
@@ -68,6 +73,7 @@ export async function fetchRunnerLeg(uri: string, signal: AbortSignal): Promise<
     coords,
     cumulative: cumulativeDistances(coords),
     downstream: props.downstream_mainstem_id || null,
+    downstreamChain: props.encompassing_mainstem_basins?.match(/https?:\/\/[^'",\]\s]+/g) ?? [],
   }
 }
 

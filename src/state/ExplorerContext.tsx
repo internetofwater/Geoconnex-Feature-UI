@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo, useReducer, useState, type ReactNod
 import { buildSitemapColorScale, type SitemapColorScale } from '../lib/colors'
 import { fetchDatasetSummaries, type DatasetSummary } from '../lib/datasets'
 import {
-  fetchMainstemFeatures,
+  loadMainstemFeatures,
   searchFeatures,
   searchResourceKey,
   type Bbox,
@@ -91,7 +91,7 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
 
   const mainstemResource = useAsyncResource(
     state.selectedMainstem?.uri ?? null,
-    fetchMainstemFeatures,
+    loadMainstemFeatures,
   )
   const nodeResource = useAsyncResource(state.selectedNode, fetchOneHop)
   const datasetsResource = useAsyncResource(state.selectedNode, fetchDatasetSummaries)

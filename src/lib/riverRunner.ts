@@ -1,8 +1,12 @@
+import type { MainstemFeatureProps } from './types'
+
 export type LngLat = [number, number]
 
 export interface RunnerLeg {
   uri: string
   name: string
+  // Enough to select this mainstem in the explorer as the runner reaches it.
+  mainstem: MainstemFeatureProps
   // Head → outlet, i.e. in the direction of flow.
   coords: LngLat[]
   // Cumulative distance (km) at each vertex; last entry is the leg's length.
@@ -14,7 +18,12 @@ const MAINSTEMS_ITEMS = 'https://reference.geoconnex.us/collections/mainstems/it
 
 interface RawMainstem {
   features?: {
-    properties?: { name_at_outlet?: string; downstream_mainstem_id?: string }
+    properties?: {
+      name_at_outlet?: string
+      downstream_mainstem_id?: string
+      lengthkm?: number
+      outlet_drainagearea_sqkm?: number
+    }
     geometry?: { type: string; coordinates: unknown } | null
   }[]
 }
@@ -29,7 +38,7 @@ export async function fetchRunnerLeg(uri: string, signal: AbortSignal): Promise<
   const url = new URL(MAINSTEMS_ITEMS)
   url.search = new URLSearchParams({
     uri,
-    properties: 'name_at_outlet,downstream_mainstem_id',
+    properties: 'name_at_outlet,downstream_mainstem_id,lengthkm,outlet_drainagearea_sqkm',
     f: 'json',
   }).toString()
 
@@ -46,12 +55,19 @@ export async function fetchRunnerLeg(uri: string, signal: AbortSignal): Promise<
   else if (geometry.type === 'MultiLineString') coords = (geometry.coordinates as LngLat[][]).flat()
   else throw new Error(`Unexpected ${geometry.type} geometry for ${uri}`)
 
+  const props = feature.properties ?? {}
   return {
     uri,
-    name: feature.properties?.name_at_outlet || 'Unnamed river',
+    name: props.name_at_outlet || 'Unnamed river',
+    mainstem: {
+      uri,
+      name_at_outlet: props.name_at_outlet ?? '',
+      lengthkm: props.lengthkm ?? 0,
+      outlet_drainagearea_sqkm: props.outlet_drainagearea_sqkm ?? 0,
+    },
     coords,
     cumulative: cumulativeDistances(coords),
-    downstream: feature.properties?.downstream_mainstem_id || null,
+    downstream: props.downstream_mainstem_id || null,
   }
 }
 

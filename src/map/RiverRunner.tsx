@@ -8,6 +8,7 @@ import {
   trimToJoin,
   type RunnerLeg,
 } from '../lib/riverRunner'
+import { prefetchMainstemFeatures } from '../lib/features'
 import { DropletIcon } from '../panel/DropletIcon'
 import { useExplorer } from '../state/ExplorerContext'
 import { TERRAIN_PITCH, type BasemapId } from './basemaps'
@@ -37,6 +38,10 @@ const TURN_RATE = 0.9
 const MAX_TURN_DEG_PER_S = 30
 // How quickly altitude follows a speed change (per second).
 const ZOOM_RATE = 1.5
+// The next river's flowline is requested halfway along the current one, or
+// earlier if the current one would otherwise run out within this many seconds
+// at the current speed — short creeks at high speed would otherwise stall.
+const NEXT_LEG_LEAD_S = 30
 // Scrolling while running zooms relative to the speed-based altitude, within
 // this many zoom levels either way, easing in at ZOOM_OFFSET_RATE per second.
 const MAX_ZOOM_OFFSET = 4
@@ -58,7 +63,7 @@ function zoomForSpeed(kmPerS: number): number {
   return Math.max(MIN_CAMERA_ZOOM, CAMERA_ZOOM - 0.8 * Math.log2(factor))
 }
 
-type Status = 'loading' | 'running' | 'waiting' | 'finished' | 'error'
+type Status = 'loading' | 'restarting' | 'running' | 'waiting' | 'finished' | 'error'
 
 interface RunState {
   legs: RunnerLeg[]
@@ -81,10 +86,31 @@ interface Hud {
   status: Status
   riverName: string
   nextName: string | null
+  previousName: string | null
   traveledKm: number
   paused: boolean
   speed: number
   error: string | null
+}
+
+function RestartIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M3.2 6.2A5.2 5.2 0 1 1 3 9.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M2.6 2.8v3.6h3.6"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
 }
 
 export function RiverRunner({
@@ -94,7 +120,8 @@ export function RiverRunner({
   map: MaplibreMap
   start: { uri: string; name: string }
 }) {
-  const { terrain3d, setTerrain3d, basemap, setBasemap, stopRiverRunner } = useExplorer()
+  const { terrain3d, setTerrain3d, basemap, setBasemap, selectMainstem, stopRiverRunner } =
+    useExplorer()
   // Captured once, so exiting restores the terrain and basemap the user had.
   const terrainBefore = useRef(terrain3d)
   const basemapBefore = useRef(basemap)
@@ -112,10 +139,13 @@ export function RiverRunner({
     zoomOffsetTarget: 0,
     status: 'loading',
   })
+  // Set by the effect below, which owns everything a restart has to reset.
+  const restart = useRef<(() => void) | null>(null)
   const [hud, setHud] = useState<Hud>({
     status: 'loading',
     riverName: start.name,
     nextName: null,
+    previousName: null,
     traveledKm: 0,
     paused: false,
     speed: 2,
@@ -139,6 +169,7 @@ export function RiverRunner({
         status: r.status,
         riverName: leg?.name ?? prev.riverName,
         nextName: r.legs[r.index + 1]?.name ?? null,
+        previousName: r.legs[r.index - 1]?.name ?? null,
         traveledKm: r.completed + r.distance,
         paused: r.paused,
         speed: r.speed,
@@ -173,11 +204,19 @@ export function RiverRunner({
 
     // Lazy loading: the next river downstream is only fetched once the runner is
     // halfway along the current one.
+    // A river's features are fetched as soon as the river upstream of it is
+    // loaded — a full river ahead — since that query is the slow one and must
+    // be ready to swap in when the runner arrives.
+    const prefetchDownstreamFeatures = (leg: RunnerLeg) => {
+      if (leg.downstream) prefetchMainstemFeatures(leg.downstream)
+    }
+
     const requestNext = (leg: RunnerLeg) => {
       if (!leg.downstream) return
       r.nextRequested = true
       fetchRunnerLeg(leg.downstream, controller.signal)
         .then((next) => {
+          prefetchDownstreamFeatures(next)
           r.legs.push(trimToJoin(next, leg.coords[leg.coords.length - 1]))
           drawRoute()
           syncHud()
@@ -224,7 +263,15 @@ export function RiverRunner({
       if (leg && moving) {
         r.distance += BASE_SPEED_KM_PER_S * r.speed * dt
         const length = legLength(leg)
-        if (!r.nextRequested && r.distance >= length / 2) requestNext(leg)
+        const secondsLeft = (length - r.distance) / (BASE_SPEED_KM_PER_S * r.speed)
+        const nextLoaded = r.index + 1 < r.legs.length
+        if (
+          !r.nextRequested &&
+          !nextLoaded &&
+          (r.distance >= length / 2 || secondsLeft < NEXT_LEG_LEAD_S)
+        ) {
+          requestNext(leg)
+        }
         if (r.distance >= length) {
           const next = r.legs[r.index + 1]
           if (next) {
@@ -233,6 +280,9 @@ export function RiverRunner({
             r.index += 1
             r.nextRequested = false
             r.status = 'running'
+            // Make the new river the selected mainstem, like clicking it would:
+            // its features replace the last river's on the map and in the panel.
+            selectMainstem(next.mainstem)
             syncHud()
           } else {
             r.distance = length
@@ -273,35 +323,60 @@ export function RiverRunner({
     setBasemap(RUNNER_BASEMAP)
     map.setMaxPitch(RUNNER_MAX_PITCH)
 
+    // Frames the head of the first river, then hands over to the frame loop.
+    const flyToStart = (onArrive: () => void) => {
+      const leg = r.legs[0]
+      const kmPerS = BASE_SPEED_KM_PER_S * r.speed
+      const radius = scaled(SMOOTH_RADIUS, kmPerS)
+      r.zoom = zoomForSpeed(kmPerS)
+      r.bearing = bearingDeg(
+        smoothedPointAlong(leg, 0, radius),
+        smoothedPointAlong(leg, scaled(AIM_AHEAD, kmPerS), radius),
+      )
+      map.flyTo({
+        center: smoothedPointAlong(leg, scaled(CENTER_LEAD, kmPerS), radius),
+        bearing: r.bearing,
+        pitch: CAMERA_PITCH,
+        zoom: r.zoom + r.zoomOffset,
+        duration: 2500,
+        essential: true,
+      })
+      map.once('moveend', () => {
+        if (controller.signal.aborted) return
+        r.status = 'running'
+        lastFrame = performance.now()
+        syncHud()
+        onArrive()
+      })
+    }
+
+    // Back to the head of the first river. Legs already loaded are kept, so the
+    // replay doesn't refetch anything it has already seen.
+    restart.current = () => {
+      if (!r.legs.length || r.status === 'loading' || r.status === 'restarting') return
+      r.index = 0
+      r.distance = 0
+      r.completed = 0
+      r.paused = false
+      r.nextRequested = false
+      r.status = 'restarting'
+      syncHud()
+      drawRoute()
+      selectMainstem(r.legs[0].mainstem)
+      flyToStart(() => {})
+    }
+
     fetchRunnerLeg(start.uri, controller.signal)
       .then((leg) => {
         r.legs = [leg]
+        prefetchDownstreamFeatures(leg)
         const addRoute = () => {
           ensureRouteLayer()
           drawRoute()
         }
         cancelStyleWait = whenStyleReady(map, addRoute)
 
-        const startKmPerS = BASE_SPEED_KM_PER_S * r.speed
-        const startRadius = scaled(SMOOTH_RADIUS, startKmPerS)
-        r.zoom = zoomForSpeed(startKmPerS)
-        r.bearing = bearingDeg(
-          smoothedPointAlong(leg, 0, startRadius),
-          smoothedPointAlong(leg, scaled(AIM_AHEAD, startKmPerS), startRadius),
-        )
-        map.flyTo({
-          center: smoothedPointAlong(leg, scaled(CENTER_LEAD, startKmPerS), startRadius),
-          bearing: r.bearing,
-          pitch: CAMERA_PITCH,
-          zoom: r.zoom,
-          duration: 2500,
-          essential: true,
-        })
-        map.once('moveend', () => {
-          if (controller.signal.aborted) return
-          r.status = 'running'
-          lastFrame = performance.now()
-          syncHud()
+        flyToStart(() => {
           frame = requestAnimationFrame(tick)
         })
       })
@@ -331,6 +406,8 @@ export function RiverRunner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, start.uri])
 
+  const handleRestart = () => restart.current?.()
+
   const togglePause = () => {
     const r = run.current
     // Keep any zooming done while paused instead of snapping back on resume.
@@ -343,20 +420,21 @@ export function RiverRunner({
     setHud((prev) => ({ ...prev, speed }))
   }
 
+  // Only for states worth calling out; running and paused speak for themselves.
   const statusText =
     hud.status === 'loading'
       ? 'Loading the river…'
-      : hud.status === 'error'
-        ? `Couldn't continue: ${hud.error}`
-        : hud.status === 'finished'
-          ? `Reached the terminus of the ${hud.riverName}.`
-          : hud.status === 'waiting'
-            ? 'Loading the next river downstream…'
-            : hud.paused
-              ? 'Paused — resume to keep floating downstream.'
-              : hud.nextName
-                ? `Next: ${hud.nextName}`
-                : 'Floating downstream…'
+      : hud.status === 'restarting'
+        ? 'Heading back to the first river…'
+        : hud.status === 'error'
+          ? `Couldn't continue: ${hud.error}`
+          : hud.status === 'finished'
+            ? `Reached the terminus of the ${hud.riverName}.`
+            : hud.status === 'waiting'
+              ? 'Loading the next river downstream…'
+              : null
+
+  const busy = hud.status === 'loading' || hud.status === 'restarting'
 
   return (
     <div className="river-runner-hud" role="region" aria-label="River runner">
@@ -367,16 +445,47 @@ export function RiverRunner({
         <span className="river-runner-river">{hud.riverName}</span>
         <span className="river-runner-distance">{hud.traveledKm.toFixed(1)} km</span>
       </div>
-      <p className="river-runner-status" aria-live="polite">
-        {statusText}
-      </p>
+      {(hud.previousName || hud.nextName) && (
+        <p className="river-runner-route">
+          {hud.previousName && (
+            <span>
+              Previous: <strong>{hud.previousName}</strong>
+            </span>
+          )}
+          {hud.previousName && hud.nextName && (
+            <span className="river-runner-route-arrow" aria-hidden="true">
+              |
+            </span>
+          )}
+          {hud.nextName && (
+            <span>
+              Next: <strong>{hud.nextName}</strong>
+            </span>
+          )}
+        </p>
+      )}
+      {statusText && (
+        <p className="river-runner-status" aria-live="polite">
+          {statusText}
+        </p>
+      )}
       <div className="river-runner-controls">
         <button
           type="button"
           onClick={togglePause}
-          disabled={hud.status === 'loading' || hud.status === 'finished' || hud.status === 'error'}
+          disabled={busy || hud.status === 'finished' || hud.status === 'error'}
         >
           {hud.paused ? 'Resume' : 'Pause'}
+        </button>
+        <button
+          type="button"
+          className="river-runner-restart"
+          onClick={handleRestart}
+          disabled={busy}
+          aria-label="Restart from the first river"
+          title="Restart from the first river"
+        >
+          <RestartIcon />
         </button>
         <div className="river-runner-speeds" role="group" aria-label="Speed">
           {SPEEDS.map((speed) => (

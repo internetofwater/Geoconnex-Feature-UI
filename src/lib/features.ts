@@ -26,6 +26,36 @@ export async function fetchMainstemFeatures(
   return fetchFeatureCollection(params, signal)
 }
 
+// Requests started ahead of time (the river runner fetches the next river's
+// features before it arrives), so selecting that mainstem can reuse them. Kept
+// small: the runner only ever looks one river ahead.
+const PREFETCH_LIMIT = 3
+const prefetchedMainstems = new Map<string, Promise<GraphFeature[]>>()
+
+export function prefetchMainstemFeatures(mainstemUri: string): void {
+  if (prefetchedMainstems.has(mainstemUri)) return
+  const request = fetchMainstemFeatures(mainstemUri, new AbortController().signal)
+  request.catch(() => prefetchedMainstems.delete(mainstemUri))
+  prefetchedMainstems.set(mainstemUri, request)
+  const oldest = prefetchedMainstems.keys().next().value
+  if (prefetchedMainstems.size > PREFETCH_LIMIT && oldest) prefetchedMainstems.delete(oldest)
+}
+
+/** fetchMainstemFeatures, reusing a prefetched request when there is one. */
+export function loadMainstemFeatures(
+  mainstemUri: string,
+  signal: AbortSignal,
+): Promise<GraphFeature[]> {
+  const request = prefetchedMainstems.get(mainstemUri)
+  if (!request) return fetchMainstemFeatures(mainstemUri, signal)
+  // The shared request can't be cancelled, but the caller's abort must still
+  // reject like a real fetch would so it never resolves into a stale view.
+  return new Promise((resolve, reject) => {
+    signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+    request.then(resolve, reject)
+  })
+}
+
 export type Bbox = [number, number, number, number]
 
 export interface FeatureSearchParams {

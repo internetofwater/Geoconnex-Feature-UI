@@ -1,4 +1,4 @@
-# Geoconnex Explorer
+# Geoconnex Feature Explorer
 
 A map-based browser for the [Geoconnex](https://geoconnex.us) knowledge graph.
 

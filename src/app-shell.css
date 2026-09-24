@@ -792,6 +792,73 @@
   overflow-wrap: anywhere;
 }
 
+.map-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.basemap-picker {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.basemap-picker legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.basemap-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.basemap-option:hover {
+  border-color: var(--accent-border);
+}
+
+.basemap-option.active {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.basemap-option input {
+  margin: 3px 0 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.basemap-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.basemap-option-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.basemap-option-description {
+  font-size: 12px;
+  color: var(--text);
+}
+
 .layers-coming-soon {
   margin: 0 0 12px;
   padding: 8px 10px;

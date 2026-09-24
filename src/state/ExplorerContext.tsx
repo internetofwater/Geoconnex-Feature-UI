@@ -13,6 +13,7 @@ import { toTripleRows } from '../lib/rdf'
 import { runSparqlQuery } from '../lib/sparql'
 import { fetchSitemapEntries, type SitemapEntry } from '../lib/sitemaps'
 import type { GraphFeature, MainstemFeatureProps, ResourceState, TripleRow } from '../lib/types'
+import { DEFAULT_BASEMAP, type BasemapId } from '../map/basemaps'
 import { useAsyncResource } from './useAsyncResource'
 
 interface ExplorerState {
@@ -61,6 +62,8 @@ interface ExplorerContextValue extends ExplorerState {
   // Sitemaps (raw `geoconnex_sitemap` values) whose features are hidden from the
   // selected mainstem's list and map layer. Scoped to one mainstem.
   hiddenSitemaps: ReadonlySet<string>
+  basemap: BasemapId
+  terrain3d: boolean
   flyToTarget: [number, number] | null
   mapBounds: Bbox | null
   selectMainstem: (feature: MainstemFeatureProps) => void
@@ -71,6 +74,8 @@ interface ExplorerContextValue extends ExplorerState {
   reportMapBounds: (bounds: Bbox) => void
   toggleSitemap: (sitemap: string) => void
   showAllSitemaps: () => void
+  setBasemap: (basemap: BasemapId) => void
+  setTerrain3d: (on: boolean) => void
 }
 
 const NO_HIDDEN_SITEMAPS: ReadonlySet<string> = new Set()
@@ -107,6 +112,8 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       ? hiddenSitemapsFor.hidden
       : NO_HIDDEN_SITEMAPS
 
+  const [basemap, setBasemap] = useState<BasemapId>(DEFAULT_BASEMAP)
+  const [terrain3d, setTerrain3d] = useState(false)
   const [flyToTarget, setFlyToTarget] = useState<[number, number] | null>(null)
   const [mapBounds, setMapBounds] = useState<Bbox | null>(null)
 
@@ -120,6 +127,8 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       sitemapEntriesResource,
       sitemapColorScale,
       hiddenSitemaps,
+      basemap,
+      terrain3d,
       flyToTarget,
       mapBounds,
       selectMainstem: (feature) => dispatch({ type: 'SELECT_MAINSTEM', feature }),
@@ -142,6 +151,8 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
         setHiddenSitemapsFor({ mainstem: mainstemUri, hidden: next })
       },
       showAllSitemaps: () => setHiddenSitemapsFor(null),
+      setBasemap,
+      setTerrain3d,
     }),
     [
       state,
@@ -153,6 +164,8 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       sitemapColorScale,
       hiddenSitemaps,
       mainstemUri,
+      basemap,
+      terrain3d,
       flyToTarget,
       mapBounds,
     ],

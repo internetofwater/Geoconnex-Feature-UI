@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { useExplorer } from '../state/ExplorerContext'
 import { LayersTab } from './LayersTab'
 import { MainstemSummary } from './MainstemSummary'
+import { MapTab } from './MapTab'
 import { SearchTab } from './SearchTab'
 
-type Tab = 'explore' | 'search' | 'layers'
+type Tab = 'explore' | 'search' | 'layers' | 'map'
 
 export function SidePanel() {
   const { selectedMainstem } = useExplorer()
@@ -74,12 +75,23 @@ export function SidePanel() {
         >
           Layers
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'map'}
+          className={tab === 'map' ? 'active' : ''}
+          onClick={() => setTab('map')}
+        >
+          Map
+        </button>
       </div>
 
       {tab === 'search' ? (
         <SearchTab />
       ) : tab === 'layers' ? (
         <LayersTab />
+      ) : tab === 'map' ? (
+        <MapTab />
       ) : selectedMainstem ? (
         <MainstemSummary />
       ) : (

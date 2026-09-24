@@ -3,6 +3,7 @@ import {
   Map as MaplibreMap,
   Popup as MaplibrePopup,
   type ExpressionSpecification,
+  type StyleSpecification,
   type MapLayerMouseEvent,
   setWorkerUrl,
 } from 'maplibre-gl'
@@ -11,6 +12,15 @@ import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import { useEffect, useRef, useState } from 'react'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
 import { sitemapColorExpression } from '../lib/colors'
+import {
+  ELEVATION_SOURCE,
+  HILLSHADE_LAYER_ID,
+  HILLSHADE_SOURCE_ID,
+  TERRAIN_EXAGGERATION,
+  TERRAIN_PITCH,
+  TERRAIN_SOURCE_ID,
+  basemapById,
+} from './basemaps'
 import { computeBounds } from '../lib/geo'
 import { sitemapKey } from '../lib/features'
 import { normalizeSitemapId } from '../lib/sitemaps'
@@ -54,7 +64,31 @@ import type { GraphFeature, MainstemFeatureProps } from '../lib/types'
 // standalone asset and point maplibre at it explicitly.
 setWorkerUrl(maplibreWorkerUrl)
 
-const BASEMAP_STYLE = 'https://tiles.openfreemap.org/styles/positron'
+const APP_SOURCE_IDS = new Set([
+  MAINSTEM_SOURCE_ID,
+  ASSOCIATED_SOURCE_ID,
+  SEARCH_SOURCE_ID,
+  TERRAIN_SOURCE_ID,
+  HILLSHADE_SOURCE_ID,
+])
+
+// setStyle() replaces every source and layer, including the app's own. Carry
+// those over from the outgoing style (with their current GeoJSON data and
+// filters) and stack them on top of the incoming basemap.
+function keepAppLayers(
+  previous: StyleSpecification | undefined,
+  next: StyleSpecification,
+): StyleSpecification {
+  if (!previous) return next
+  const sources = { ...next.sources }
+  for (const [id, source] of Object.entries(previous.sources)) {
+    if (APP_SOURCE_IDS.has(id)) sources[id] = source
+  }
+  const appLayers = previous.layers.filter(
+    (layer) => 'source' in layer && APP_SOURCE_IDS.has(layer.source as string),
+  )
+  return { ...next, sources, layers: [...next.layers, ...appLayers], terrain: previous.terrain }
+}
 
 function toFeatureCollection(features: GraphFeature[]): FeatureCollection<Geometry> {
   return {
@@ -83,18 +117,25 @@ export function MapView() {
     searchResource,
     sitemapColorScale,
     hiddenSitemaps,
+    basemap,
+    terrain3d,
     flyToTarget,
     selectMainstem,
     selectNode,
     reportMapBounds,
   } = useExplorer()
 
+  // The basemap the map currently shows. Read (not depended on) when the map is
+  // created, so switching basemaps restyles the existing map instead of
+  // rebuilding it.
+  const appliedBasemap = useRef(basemap)
+
   useEffect(() => {
     if (!containerRef.current) return
 
     const map = new MaplibreMap({
       container: containerRef.current,
-      style: BASEMAP_STYLE,
+      style: basemapById(appliedBasemap.current).style,
       bounds: CONUS_BOUNDS,
       fitBoundsOptions: { padding: 20 },
     })
@@ -198,6 +239,48 @@ export function MapView() {
       setMap(null)
     }
   }, [selectMainstem, selectNode, reportMapBounds])
+
+  useEffect(() => {
+    if (!map) return
+    const apply = () => {
+      if (terrain3d) {
+        if (!map.getSource(TERRAIN_SOURCE_ID)) map.addSource(TERRAIN_SOURCE_ID, ELEVATION_SOURCE)
+        if (!map.getSource(HILLSHADE_SOURCE_ID)) {
+          map.addSource(HILLSHADE_SOURCE_ID, ELEVATION_SOURCE)
+        }
+        if (!map.getLayer(HILLSHADE_LAYER_ID)) {
+          // Under the app's own layers so rivers and features stay crisp.
+          map.addLayer(
+            {
+              id: HILLSHADE_LAYER_ID,
+              type: 'hillshade',
+              source: HILLSHADE_SOURCE_ID,
+              paint: { 'hillshade-exaggeration': 0.4 },
+            },
+            mainstemLayers[0].id,
+          )
+        }
+        map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: TERRAIN_EXAGGERATION })
+        if (map.getPitch() < 30) map.easeTo({ pitch: TERRAIN_PITCH, duration: 800 })
+      } else {
+        map.setTerrain(null)
+        if (map.getLayer(HILLSHADE_LAYER_ID)) map.removeLayer(HILLSHADE_LAYER_ID)
+        if (map.getPitch() > 0) map.easeTo({ pitch: 0, bearing: 0, duration: 800 })
+      }
+    }
+    // A basemap switch may still be loading; sources can't be added until it is.
+    if (map.isStyleLoaded()) apply()
+    else map.once('style.load', apply)
+    return () => {
+      map.off('style.load', apply)
+    }
+  }, [map, terrain3d])
+
+  useEffect(() => {
+    if (!map || appliedBasemap.current === basemap) return
+    appliedBasemap.current = basemap
+    map.setStyle(basemapById(basemap).style, { transformStyle: keepAppLayers })
+  }, [map, basemap])
 
   useEffect(() => {
     if (!map) return

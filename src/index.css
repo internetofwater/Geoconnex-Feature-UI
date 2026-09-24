@@ -12,7 +12,7 @@
   --panel-bg: rgba(255, 255, 255, 0.78);
   /* Side and node panels: dense tables get hard to read if too much of the
      map shows through. --panel-bg is for the small floating controls. */
-  --panel-bg-solid: rgba(255, 255, 255, 0.9);
+  --panel-bg-solid: rgba(255, 255, 255, 0.94);
   --border: #dfe2ea;
   --code-bg: #f2f5f8;
   --accent: #0b7d77;
@@ -48,7 +48,7 @@
     --text-h: #f1f3f9;
     --bg: #111831;
     --panel-bg: rgba(17, 24, 49, 0.8);
-    --panel-bg-solid: rgba(17, 24, 49, 0.85);
+    --panel-bg-solid: rgba(17, 24, 49, 0.9);
     --border: #2a3456;
     --code-bg: #1a2342;
     --accent: #3fd0c7;

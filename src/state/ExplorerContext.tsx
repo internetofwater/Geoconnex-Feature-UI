@@ -67,12 +67,17 @@ interface ExplorerContextValue extends ExplorerState {
   // The mainstem the river runner started from, while it's running.
   riverRunner: { uri: string; name: string } | null
   flyToTarget: [number, number] | null
+  fitTarget: Bbox | null
+  // Where the place search last landed, marked on the map.
+  placeMarker: [number, number] | null
   mapBounds: Bbox | null
   selectMainstem: (feature: MainstemFeatureProps) => void
   selectNode: (uri: string) => void
   clearNode: () => void
   runSearch: (params: FeatureSearchParams) => void
   flyTo: (lon: number, lat: number) => void
+  fitBounds: (bbox: Bbox) => void
+  setPlaceMarker: (point: [number, number] | null) => void
   reportMapBounds: (bounds: Bbox) => void
   toggleSitemap: (sitemap: string) => void
   showAllSitemaps: () => void
@@ -120,6 +125,8 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
   const [terrain3d, setTerrain3d] = useState(false)
   const [riverRunner, setRiverRunner] = useState<{ uri: string; name: string } | null>(null)
   const [flyToTarget, setFlyToTarget] = useState<[number, number] | null>(null)
+  const [fitTarget, setFitTarget] = useState<Bbox | null>(null)
+  const [placeMarker, setPlaceMarker] = useState<[number, number] | null>(null)
   const [mapBounds, setMapBounds] = useState<Bbox | null>(null)
 
   const value = useMemo<ExplorerContextValue>(
@@ -136,6 +143,8 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       terrain3d,
       riverRunner,
       flyToTarget,
+      fitTarget,
+      placeMarker,
       mapBounds,
       selectMainstem: (feature) => dispatch({ type: 'SELECT_MAINSTEM', feature }),
       selectNode: (uri) => dispatch({ type: 'SELECT_NODE', uri }),
@@ -148,6 +157,8 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
         setSearchKey(key)
       },
       flyTo: (lon, lat) => setFlyToTarget([lon, lat]),
+      fitBounds: (bbox) => setFitTarget(bbox),
+      setPlaceMarker,
       reportMapBounds: (bounds) => setMapBounds(bounds),
       toggleSitemap: (sitemap) => {
         if (!mainstemUri) return
@@ -176,6 +187,8 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       terrain3d,
       riverRunner,
       flyToTarget,
+      fitTarget,
+      placeMarker,
       mapBounds,
     ],
   )

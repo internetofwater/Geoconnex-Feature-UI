@@ -1,6 +1,7 @@
 import {
   GeoJSONSource,
   Map as MaplibreMap,
+  Marker as MaplibreMarker,
   Popup as MaplibrePopup,
   type ExpressionSpecification,
   type StyleSpecification,
@@ -128,6 +129,8 @@ export function MapView() {
     terrain3d,
     riverRunner,
     flyToTarget,
+    fitTarget,
+    placeMarker,
     selectMainstem,
     selectNode,
     reportMapBounds,
@@ -337,7 +340,9 @@ export function MapView() {
   }, [map, mainstemResource.data, hiddenSitemaps])
 
   useEffect(() => {
-    if (!map) return
+    // Until sitemap.xml loads the scale is empty, and a `match` with no cases is
+    // invalid — the layers keep their default gray until then.
+    if (!map || sitemapColorScale.size === 0) return
     const expression = sitemapColorExpression(sitemapColorScale)
     map.setPaintProperty(ASSOCIATED_LAYER_ID, 'circle-color', expression)
     map.setPaintProperty(ASSOCIATED_FILL_LAYER_ID, 'fill-color', expression)
@@ -346,6 +351,32 @@ export function MapView() {
     map.setPaintProperty(SEARCH_FILL_LAYER_ID, 'fill-color', expression)
     map.setPaintProperty(SEARCH_LINE_LAYER_ID, 'line-color', expression)
   }, [map, sitemapColorScale])
+
+  useEffect(() => {
+    if (!map || !placeMarker) return
+    const element = document.createElement('div')
+    element.className = 'place-marker'
+    // MapLibre positions the marker through its element's transform, so the
+    // rotated pin shape lives on a child.
+    element.appendChild(document.createElement('div')).className = 'place-marker-pin'
+    const marker = new MaplibreMarker({ element, anchor: 'bottom' }).setLngLat(placeMarker).addTo(map)
+    return () => {
+      marker.remove()
+    }
+  }, [map, placeMarker])
+
+  useEffect(() => {
+    if (!map || !fitTarget) return
+    const [west, south, east, north] = fitTarget
+    // Left padding clears the side panel, as for search results.
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: { top: 60, bottom: 60, left: 420, right: 60 }, maxZoom: 15, duration: 1000 },
+    )
+  }, [map, fitTarget])
 
   useEffect(() => {
     if (!map || !flyToTarget) return

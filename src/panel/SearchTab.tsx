@@ -3,6 +3,7 @@ import { colorForSitemap } from '../lib/colors'
 import { normalizeSitemapId } from '../lib/sitemaps'
 import { useExplorer } from '../state/ExplorerContext'
 import { useFeatureFilter } from './FeatureFilter'
+import { PlaceSearch } from './PlaceSearch'
 
 export function SearchTab() {
   const {
@@ -38,6 +39,7 @@ export function SearchTab() {
 
   return (
     <div className="search-tab">
+      <PlaceSearch />
       <form className="search-controls" onSubmit={handleSubmit}>
         <input
           type="search"
@@ -73,9 +75,6 @@ export function SearchTab() {
         </label>
       </form>
 
-      {searchResource.status === 'idle' && (
-        <p className="panel-status">Type a feature name and press Search.</p>
-      )}
       {searchResource.status === 'loading' && (
         <p className="panel-status">Searching — this can take up to a minute…</p>
       )}

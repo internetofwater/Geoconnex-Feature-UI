@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useExplorer } from '../state/ExplorerContext'
 import { DatasetsTab } from './DatasetsTab'
 import { NodeDetails } from './NodeDetails'
-import { SparqlTab } from './SparqlTab'
+import { QueryingTab } from './QueryingTab'
 
-type Tab = 'datasets' | 'properties' | 'sparql'
+type Tab = 'datasets' | 'properties' | 'querying'
 
 export function NodePanel() {
   const { selectedNode, clearNode, datasetsResource } = useExplorer()
@@ -101,16 +101,16 @@ export function NodePanel() {
         <button
           type="button"
           role="tab"
-          aria-selected={tab === 'sparql'}
-          className={tab === 'sparql' ? 'active' : ''}
-          onClick={() => setTab('sparql')}
+          aria-selected={tab === 'querying'}
+          className={tab === 'querying' ? 'active' : ''}
+          onClick={() => setTab('querying')}
         >
-          SPARQL
+          Querying
         </button>
       </div>
 
-      {tab === 'sparql' ? (
-        <SparqlTab nodeUri={selectedNode} />
+      {tab === 'querying' ? (
+        <QueryingTab nodeUri={selectedNode} />
       ) : tab === 'datasets' ? (
         <DatasetsTab key={selectedNode} expanded={expandedIds} onToggle={toggleDataset} />
       ) : (

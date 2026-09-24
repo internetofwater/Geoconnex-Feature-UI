@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
 import { sitemapColorExpression } from '../lib/colors'
 import { computeBounds } from '../lib/geo'
+import { sitemapKey } from '../lib/features'
 import { normalizeSitemapId } from '../lib/sitemaps'
 import { useExplorer } from '../state/ExplorerContext'
 import {
@@ -81,6 +82,7 @@ export function MapView() {
     mainstemResource,
     searchResource,
     sitemapColorScale,
+    hiddenSitemaps,
     flyToTarget,
     selectMainstem,
     selectNode,
@@ -218,8 +220,11 @@ export function MapView() {
   useEffect(() => {
     if (!map) return
     const source = map.getSource(ASSOCIATED_SOURCE_ID) as GeoJSONSource | undefined
-    source?.setData(toFeatureCollection(mainstemResource.data ?? []))
-  }, [map, mainstemResource.data])
+    const visible = (mainstemResource.data ?? []).filter(
+      (feature) => !hiddenSitemaps.has(sitemapKey(feature)),
+    )
+    source?.setData(toFeatureCollection(visible))
+  }, [map, mainstemResource.data, hiddenSitemaps])
 
   useEffect(() => {
     if (!map) return

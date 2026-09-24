@@ -58,6 +58,9 @@ interface ExplorerContextValue extends ExplorerState {
   searchResource: ResourceState<GraphFeature[]>
   sitemapEntriesResource: ResourceState<SitemapEntry[]>
   sitemapColorScale: SitemapColorScale
+  // Sitemaps (raw `geoconnex_sitemap` values) whose features are hidden from the
+  // selected mainstem's list and map layer. Scoped to one mainstem.
+  hiddenSitemaps: ReadonlySet<string>
   flyToTarget: [number, number] | null
   mapBounds: Bbox | null
   selectMainstem: (feature: MainstemFeatureProps) => void
@@ -66,7 +69,11 @@ interface ExplorerContextValue extends ExplorerState {
   runSearch: (params: FeatureSearchParams) => void
   flyTo: (lon: number, lat: number) => void
   reportMapBounds: (bounds: Bbox) => void
+  toggleSitemap: (sitemap: string) => void
+  showAllSitemaps: () => void
 }
+
+const NO_HIDDEN_SITEMAPS: ReadonlySet<string> = new Set()
 
 const ExplorerContext = createContext<ExplorerContextValue | null>(null)
 
@@ -90,6 +97,16 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
   const [searchKey, setSearchKey] = useState<string | null>(null)
   const searchResource = useAsyncResource(searchKey, searchFeatures)
 
+  const [hiddenSitemapsFor, setHiddenSitemapsFor] = useState<{
+    mainstem: string
+    hidden: ReadonlySet<string>
+  } | null>(null)
+  const mainstemUri = state.selectedMainstem?.uri ?? null
+  const hiddenSitemaps =
+    mainstemUri && hiddenSitemapsFor?.mainstem === mainstemUri
+      ? hiddenSitemapsFor.hidden
+      : NO_HIDDEN_SITEMAPS
+
   const [flyToTarget, setFlyToTarget] = useState<[number, number] | null>(null)
   const [mapBounds, setMapBounds] = useState<Bbox | null>(null)
 
@@ -102,6 +119,7 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       searchResource,
       sitemapEntriesResource,
       sitemapColorScale,
+      hiddenSitemaps,
       flyToTarget,
       mapBounds,
       selectMainstem: (feature) => dispatch({ type: 'SELECT_MAINSTEM', feature }),
@@ -116,6 +134,14 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       },
       flyTo: (lon, lat) => setFlyToTarget([lon, lat]),
       reportMapBounds: (bounds) => setMapBounds(bounds),
+      toggleSitemap: (sitemap) => {
+        if (!mainstemUri) return
+        const next = new Set(hiddenSitemaps)
+        if (next.has(sitemap)) next.delete(sitemap)
+        else next.add(sitemap)
+        setHiddenSitemapsFor({ mainstem: mainstemUri, hidden: next })
+      },
+      showAllSitemaps: () => setHiddenSitemapsFor(null),
     }),
     [
       state,
@@ -125,6 +151,8 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       searchResource,
       sitemapEntriesResource,
       sitemapColorScale,
+      hiddenSitemaps,
+      mainstemUri,
       flyToTarget,
       mapBounds,
     ],

@@ -38,6 +38,15 @@ export function SidePanel() {
       </button>
 
       <div className="side-panel-tabs" role="tablist">
+        <a
+          className="app-logo"
+          href="https://internetofwater.org/"
+          target="_blank"
+          rel="noreferrer"
+          title="Internet of Water Coalition"
+        >
+          <img src={`${import.meta.env.BASE_URL}iowcoalition.png`} alt="Internet of Water Coalition" />
+        </a>
         <button
           type="button"
           role="tab"

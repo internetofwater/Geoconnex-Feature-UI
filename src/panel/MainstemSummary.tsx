@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { colorForSitemap } from '../lib/colors'
 import { downloadCsv, slugify } from '../lib/download'
 import { featuresToCsv } from '../lib/rdf'
@@ -17,12 +18,40 @@ function GraphIcon() {
   )
 }
 
+function InfoIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.3" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M8 7v4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="8" cy="4.8" r="0.9" fill="currentColor" />
+    </svg>
+  )
+}
+
 export function MainstemSummary() {
-  const { selectedMainstem, selectedNode, mainstemResource, sitemapColorScale, selectNode, flyTo } =
-    useExplorer()
-  const filter = useFeatureFilter(mainstemResource.data ?? [], selectedMainstem?.uri ?? null)
+  const {
+    selectedMainstem,
+    selectedNode,
+    mainstemResource,
+    sitemapColorScale,
+    hiddenSitemaps,
+    toggleSitemap,
+    showAllSitemaps,
+    selectNode,
+    flyTo,
+  } = useExplorer()
+  const filter = useFeatureFilter(mainstemResource.data ?? [], selectedMainstem?.uri ?? null, {
+    hidden: hiddenSitemaps,
+    onToggle: toggleSitemap,
+    onShowAll: showAllSitemaps,
+    colorScale: sitemapColorScale,
+  })
+  // Length and drainage area are secondary, so they stay tucked away until asked
+  // for. Like the filter, the choice resets when a different mainstem is picked.
+  const [infoOpenFor, setInfoOpenFor] = useState<string | null>(null)
 
   if (!selectedMainstem) return null
+  const infoOpen = infoOpenFor === selectedMainstem.uri
 
   return (
     <div className="mainstem-summary">
@@ -32,26 +61,40 @@ export function MainstemSummary() {
             {selectedMainstem.name_at_outlet || 'Unnamed mainstem'}
           </a>
         </h2>
-        <button
-          type="button"
-          className="icon-button"
-          onClick={() => selectNode(selectedMainstem.uri)}
-          aria-label="Inspect raw graph node"
-          title="Inspect raw graph node"
-        >
-          <GraphIcon />
-        </button>
+        <div className="panel-header-actions">
+          <button
+            type="button"
+            className={infoOpen ? 'icon-button active' : 'icon-button'}
+            onClick={() => setInfoOpenFor(infoOpen ? null : selectedMainstem.uri)}
+            aria-label={infoOpen ? 'Hide mainstem info' : 'Show mainstem info'}
+            aria-pressed={infoOpen}
+            title={infoOpen ? 'Hide mainstem info' : 'Show mainstem info'}
+          >
+            <InfoIcon />
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={() => selectNode(selectedMainstem.uri)}
+            aria-label="Inspect raw graph node"
+            title="Inspect raw graph node"
+          >
+            <GraphIcon />
+          </button>
+        </div>
       </div>
-      <dl className="mainstem-stats">
-        <div>
-          <dt>Length</dt>
-          <dd>{selectedMainstem.lengthkm.toFixed(1)} km</dd>
-        </div>
-        <div>
-          <dt>Drainage area</dt>
-          <dd>{selectedMainstem.outlet_drainagearea_sqkm.toLocaleString()} km²</dd>
-        </div>
-      </dl>
+      {infoOpen && (
+        <dl className="mainstem-stats">
+          <div>
+            <dt>Length</dt>
+            <dd>{selectedMainstem.lengthkm.toFixed(1)} km</dd>
+          </div>
+          <div>
+            <dt>Drainage area</dt>
+            <dd>{selectedMainstem.outlet_drainagearea_sqkm.toLocaleString()} km²</dd>
+          </div>
+        </dl>
+      )}
 
       <div className="panel-header-row">
         <h3>Associated features</h3>

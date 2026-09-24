@@ -1,7 +1,8 @@
 import type { Geometry } from 'geojson'
 import type { GraphFeature } from './types'
 
-const FEATURES_ENDPOINT = 'https://features.geoconnex.us/collections/GeoconnexFeatures/items'
+export const FEATURES_COLLECTION_URL = 'https://features.geoconnex.us/collections/GeoconnexFeatures'
+const FEATURES_ENDPOINT = `${FEATURES_COLLECTION_URL}/items`
 
 interface RawFeatureCollection {
   features: RawFeature[]
@@ -10,6 +11,11 @@ interface RawFeatureCollection {
 interface RawFeature {
   properties?: Record<string, unknown>
   geometry?: Geometry | null
+}
+
+// Features without a geoconnex_sitemap are grouped under the empty string.
+export function sitemapKey(feature: GraphFeature): string {
+  return feature.sitemap ?? ''
 }
 
 export async function fetchMainstemFeatures(

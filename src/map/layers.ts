@@ -20,9 +20,8 @@ export const SEARCH_LINE_LAYER_ID = 'search-results-line'
 export const SEARCH_HIGHLIGHT_LAYER_ID = 'search-results-highlight'
 export const SEARCH_LINE_HIGHLIGHT_LAYER_ID = 'search-results-line-highlight'
 
-// A distinct amber, not the app's purple accent (already used for the selected
-// mainstem highlight and for search markers) — so "this is the thing you
-// clicked" doesn't read as the same signal as those. Never the sitemap fill
+// A distinct amber, not the coral used for the selected mainstem highlight — so
+// "this is the thing you clicked" doesn't read as the same signal. Never the sitemap fill
 // color either, which is reserved for source identity (the legend).
 const FEATURE_HIGHLIGHT_COLOR = '#ffb703'
 
@@ -105,7 +104,7 @@ export const mainstemLayers: LayerSpecification[] = [
     paint: {
       'line-width': 6,
       'line-blur': 1,
-      'line-color': '#aa3bff',
+      'line-color': '#ee3d49', // IoW coral — stands out against the blue/teal rivers
     },
   },
 ]

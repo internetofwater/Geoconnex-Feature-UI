@@ -19,11 +19,10 @@ export function SitemapsList() {
                 className="legend-swatch"
                 style={{ backgroundColor: sitemapColorScale.get(entry.id) }}
               />
+              {/* The plain-language description leads; the id is for reference. */}
               <span className="legend-text">
-                <span className="legend-label">{entry.id}</span>
-                {entry.description && (
-                  <span className="legend-description">{entry.description}</span>
-                )}
+                <span className="legend-label">{entry.description || entry.id}</span>
+                {entry.description && <span className="legend-id">{entry.id}</span>}
               </span>
             </li>
           ))}

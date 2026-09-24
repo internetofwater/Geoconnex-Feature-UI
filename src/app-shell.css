@@ -728,12 +728,14 @@
   overflow-wrap: anywhere;
 }
 
-.legend-description {
+.legend-id {
+  font-family: var(--mono);
   font-size: 11px;
   line-height: 145%;
   color: var(--text);
   overflow-wrap: anywhere;
 }
+
 
 .triple-table-section {
   margin-top: 20px;

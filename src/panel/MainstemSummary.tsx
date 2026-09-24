@@ -4,6 +4,7 @@ import { downloadCsv, slugify } from '../lib/download'
 import { featuresToCsv } from '../lib/rdf'
 import { useExplorer } from '../state/ExplorerContext'
 import { DownloadIcon } from './DownloadIcon'
+import { DropletIcon } from './DropletIcon'
 import { useFeatureFilter } from './FeatureFilter'
 
 function GraphIcon() {
@@ -39,6 +40,8 @@ export function MainstemSummary() {
     showAllSitemaps,
     selectNode,
     flyTo,
+    riverRunner,
+    startRiverRunner,
   } = useExplorer()
   const filter = useFeatureFilter(mainstemResource.data ?? [], selectedMainstem?.uri ?? null, {
     hidden: hiddenSitemaps,
@@ -49,19 +52,36 @@ export function MainstemSummary() {
   // Length and drainage area are secondary, so they stay tucked away until asked
   // for. Like the filter, the choice resets when a different mainstem is picked.
   const [infoOpenFor, setInfoOpenFor] = useState<string | null>(null)
+  const [confirmRunFor, setConfirmRunFor] = useState<string | null>(null)
 
   if (!selectedMainstem) return null
   const infoOpen = infoOpenFor === selectedMainstem.uri
+  const confirmRun = confirmRunFor === selectedMainstem.uri && !riverRunner
+  const riverName = selectedMainstem.name_at_outlet || 'Unnamed mainstem'
 
   return (
     <div className="mainstem-summary">
       <div className="mainstem-header">
         <h2>
           <a href={selectedMainstem.uri} target="_blank" rel="noreferrer">
-            {selectedMainstem.name_at_outlet || 'Unnamed mainstem'}
+            {riverName}
           </a>
         </h2>
         <div className="panel-header-actions">
+          <button
+            type="button"
+            className={confirmRun ? 'icon-button active' : 'icon-button'}
+            onClick={() => setConfirmRunFor(confirmRun ? null : selectedMainstem.uri)}
+            disabled={!!riverRunner}
+            aria-label="River runner: float downstream from this river"
+            title={
+              riverRunner
+                ? 'River runner is already running'
+                : 'River runner: float downstream from this river'
+            }
+          >
+            <DropletIcon />
+          </button>
           <button
             type="button"
             className={infoOpen ? 'icon-button active' : 'icon-button'}
@@ -83,6 +103,31 @@ export function MainstemSummary() {
           </button>
         </div>
       </div>
+      {confirmRun && (
+        <div className="river-runner-confirm" role="alertdialog" aria-label="Start river runner?">
+          <p>
+            <strong>Start the river runner?</strong> The map will switch to a first-person view
+            with 3D terrain and float down the {riverName} and every river downstream of it
+            until it reaches the terminus.
+          </p>
+          <div className="river-runner-confirm-actions">
+            <button type="button" onClick={() => setConfirmRunFor(null)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="primary"
+              autoFocus
+              onClick={() => {
+                setConfirmRunFor(null)
+                startRiverRunner({ uri: selectedMainstem.uri, name: riverName })
+              }}
+            >
+              Start
+            </button>
+          </div>
+        </div>
+      )}
       {infoOpen && (
         <dl className="mainstem-stats">
           <div>

@@ -252,3 +252,20 @@ export const searchResultsLineHighlightLayer: LayerSpecification = {
     'line-color': FEATURE_HIGHLIGHT_COLOR,
   },
 }
+
+// The river runner's route: every downstream leg loaded so far, drawn over the
+// mainstem network in the same coral as the selected-mainstem highlight.
+export const RIVER_RUNNER_SOURCE_ID = 'river-runner-route'
+export const RIVER_RUNNER_LAYER_ID = 'river-runner-route-line'
+
+export const riverRunnerLayer: LayerSpecification = {
+  id: RIVER_RUNNER_LAYER_ID,
+  type: 'line',
+  source: RIVER_RUNNER_SOURCE_ID,
+  layout: { 'line-cap': 'round', 'line-join': 'round' },
+  paint: {
+    'line-color': '#ee3d49',
+    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 2, 12, 5, 16, 9],
+    'line-opacity': 0.85,
+  },
+}

@@ -5,6 +5,9 @@ import {
   type ExpressionSpecification,
   type StyleSpecification,
   type MapLayerMouseEvent,
+  type MapLibreEvent,
+  type MapMouseEvent,
+  type PointLike,
   setWorkerUrl,
 } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -21,6 +24,8 @@ import {
   TERRAIN_SOURCE_ID,
   basemapById,
 } from './basemaps'
+import { RiverRunner } from './RiverRunner'
+import { whenStyleReady } from './styleReady'
 import { computeBounds } from '../lib/geo'
 import { sitemapKey } from '../lib/features'
 import { normalizeSitemapId } from '../lib/sitemaps'
@@ -43,6 +48,7 @@ import {
   SEARCH_LINE_HIGHLIGHT_LAYER_ID,
   SEARCH_LINE_LAYER_ID,
   SEARCH_SOURCE_ID,
+  RIVER_RUNNER_SOURCE_ID,
   POINT_GEOMETRY_FILTER,
   associatedFeaturesFillLayer,
   associatedFeaturesHighlightLayer,
@@ -70,6 +76,7 @@ const APP_SOURCE_IDS = new Set([
   SEARCH_SOURCE_ID,
   TERRAIN_SOURCE_ID,
   HILLSHADE_SOURCE_ID,
+  RIVER_RUNNER_SOURCE_ID,
 ])
 
 // setStyle() replaces every source and layer, including the app's own. Carry
@@ -119,6 +126,7 @@ export function MapView() {
     hiddenSitemaps,
     basemap,
     terrain3d,
+    riverRunner,
     flyToTarget,
     selectMainstem,
     selectNode,
@@ -193,17 +201,40 @@ export function MapView() {
         className: 'feature-hover-popup',
       })
 
-      map.on('mousemove', featureLayers, (e: MapLayerMouseEvent) => {
-        const name = e.features?.[0]?.properties?.name as string | null | undefined
-        if (!name) {
-          hoverPopup.remove()
+      // Hover is re-checked when the camera moves too, not only when the mouse
+      // does: during the river runner features slide under a still cursor.
+      let hoverPoint: PointLike | null = null
+      let lastHoverCheck = 0
+      const updateHover = () => {
+        if (!hoverPoint) return
+        let name: string | null | undefined
+        try {
+          name = map.queryRenderedFeatures(hoverPoint, { layers: featureLayers })[0]?.properties
+            ?.name as string | null | undefined
+        } catch {
+          // Mid basemap switch the layers may not exist yet; try again next move.
           return
         }
-        hoverPopup.setLngLat(e.lngLat).setText(name).addTo(map)
-      })
-      for (const layerId of featureLayers) {
-        map.on('mouseleave', layerId, () => hoverPopup.remove())
+        if (name) hoverPopup.setLngLat(map.unproject(hoverPoint)).setText(name).addTo(map)
+        else hoverPopup.remove()
       }
+      map.on('mousemove', (e: MapMouseEvent) => {
+        hoverPoint = e.point
+        updateHover()
+      })
+      map.getCanvas().addEventListener('mouseleave', () => {
+        hoverPoint = null
+        hoverPopup.remove()
+      })
+      map.on('move', (e: MapLibreEvent<unknown>) => {
+        // Programmatic moves only (a drag already produces mousemoves); throttled
+        // since the runner moves the camera every frame.
+        if ((e as { originalEvent?: Event }).originalEvent) return
+        const now = performance.now()
+        if (now - lastHoverCheck < 100) return
+        lastHoverCheck = now
+        updateHover()
+      })
 
       map.on('click', MAINSTEM_HIT_LAYER_ID, (e: MapLayerMouseEvent) => {
         const feature = e.features?.[0]
@@ -269,11 +300,7 @@ export function MapView() {
       }
     }
     // A basemap switch may still be loading; sources can't be added until it is.
-    if (map.isStyleLoaded()) apply()
-    else map.once('style.load', apply)
-    return () => {
-      map.off('style.load', apply)
-    }
+    return whenStyleReady(map, apply)
   }, [map, terrain3d])
 
   useEffect(() => {
@@ -347,5 +374,10 @@ export function MapView() {
     }
   }, [map, searchResource.data])
 
-  return <div ref={containerRef} className="map-view" />
+  return (
+    <>
+      <div ref={containerRef} className="map-view" />
+      {map && riverRunner && <RiverRunner key={riverRunner.uri} map={map} start={riverRunner} />}
+    </>
+  )
 }

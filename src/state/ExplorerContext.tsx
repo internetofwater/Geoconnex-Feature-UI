@@ -64,6 +64,8 @@ interface ExplorerContextValue extends ExplorerState {
   hiddenSitemaps: ReadonlySet<string>
   basemap: BasemapId
   terrain3d: boolean
+  // The mainstem the river runner started from, while it's running.
+  riverRunner: { uri: string; name: string } | null
   flyToTarget: [number, number] | null
   mapBounds: Bbox | null
   selectMainstem: (feature: MainstemFeatureProps) => void
@@ -76,6 +78,8 @@ interface ExplorerContextValue extends ExplorerState {
   showAllSitemaps: () => void
   setBasemap: (basemap: BasemapId) => void
   setTerrain3d: (on: boolean) => void
+  startRiverRunner: (mainstem: { uri: string; name: string }) => void
+  stopRiverRunner: () => void
 }
 
 const NO_HIDDEN_SITEMAPS: ReadonlySet<string> = new Set()
@@ -114,6 +118,7 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
 
   const [basemap, setBasemap] = useState<BasemapId>(DEFAULT_BASEMAP)
   const [terrain3d, setTerrain3d] = useState(false)
+  const [riverRunner, setRiverRunner] = useState<{ uri: string; name: string } | null>(null)
   const [flyToTarget, setFlyToTarget] = useState<[number, number] | null>(null)
   const [mapBounds, setMapBounds] = useState<Bbox | null>(null)
 
@@ -129,6 +134,7 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       hiddenSitemaps,
       basemap,
       terrain3d,
+      riverRunner,
       flyToTarget,
       mapBounds,
       selectMainstem: (feature) => dispatch({ type: 'SELECT_MAINSTEM', feature }),
@@ -153,6 +159,8 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       showAllSitemaps: () => setHiddenSitemapsFor(null),
       setBasemap,
       setTerrain3d,
+      startRiverRunner: setRiverRunner,
+      stopRiverRunner: () => setRiverRunner(null),
     }),
     [
       state,
@@ -166,6 +174,7 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       mainstemUri,
       basemap,
       terrain3d,
+      riverRunner,
       flyToTarget,
       mapBounds,
     ],

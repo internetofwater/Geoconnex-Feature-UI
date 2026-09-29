@@ -1,4 +1,5 @@
 import type { Geometry } from 'geojson'
+import { geometryBounds } from './geo'
 import type { GraphFeature } from './types'
 
 export const FEATURES_COLLECTION_URL = 'https://features.geoconnex.us/collections/GeoconnexFeatures'
@@ -71,17 +72,19 @@ export interface FeatureSearchParams {
 }
 
 // Distinguishes an empty/never-run search from a search that legitimately found
-// nothing, so callers keyed on this string see a stable identity per query.
+// nothing, so callers keyed on this string see a stable identity per query. A
+// search needs a name or an area, or both.
 export function searchResourceKey({ term, sitemapId, bbox }: FeatureSearchParams): string | null {
   const trimmed = term.trim()
-  if (!trimmed) return null
+  if (!trimmed && !bbox) return null
   return JSON.stringify([trimmed, sitemapId ?? null, bbox ?? null])
 }
 
 export async function searchFeatures(key: string, signal: AbortSignal): Promise<GraphFeature[]> {
   const [term, sitemapId, bbox] = JSON.parse(key) as [string, string | null, Bbox | null]
 
-  const clauses = [`feature_name ILIKE '%${escapeCql2String(term)}%'`]
+  const clauses: string[] = []
+  if (term) clauses.push(`feature_name ILIKE '%${escapeCql2String(term)}%'`)
   if (sitemapId) {
     // ILIKE + wildcards rather than `=` — features harvested via bulk integrations
     // often carry a `bulk:` prefix on geoconnex_sitemap that the sitemap.xml
@@ -101,6 +104,27 @@ export async function searchFeatures(key: string, signal: AbortSignal): Promise<
     f: 'json',
   })
   return fetchFeatureCollection(params, signal)
+}
+
+/**
+ * The full extent of a Geoconnex feature, by its URI. Vector tiles only carry
+ * the pieces of a feature in each tile, so a clicked feature's own geometry
+ * can be cut off at tiles that aren't loaded.
+ */
+export async function fetchFeatureExtent(uri: string, signal?: AbortSignal): Promise<Bbox | null> {
+  const url = new URL(FEATURES_ENDPOINT)
+  url.search = new URLSearchParams({
+    filter: `id = '${escapeCql2String(uri)}'`,
+    limit: '1',
+    f: 'json',
+  }).toString()
+  const response = await fetch(url, { signal })
+  if (!response.ok) {
+    throw new Error(`Feature query failed: ${response.status} ${response.statusText}`)
+  }
+  const collection = (await response.json()) as RawFeatureCollection
+  const geometry = collection.features?.[0]?.geometry
+  return geometry ? geometryBounds(geometry) : null
 }
 
 function bboxToWktPolygon([west, south, east, north]: Bbox): string {

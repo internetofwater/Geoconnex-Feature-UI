@@ -1,7 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { colorForSitemap } from '../lib/colors'
 import { normalizeSitemapId } from '../lib/sitemaps'
-import { useExplorer } from '../state/ExplorerContext'
+import { useExplorer, type SearchArea } from '../state/ExplorerContext'
 import { useFeatureFilter } from './FeatureFilter'
 import { PlaceSearch } from './PlaceSearch'
 import { SourcePicker } from './SourcePicker'
@@ -15,17 +15,25 @@ export function SearchTab() {
     sitemapColorScale,
     mapBounds,
     runSearch,
+    searchArea,
+    areaPicking,
+    setSearchArea,
+    setAreaPicking,
   } = useExplorer()
   const [term, setTerm] = useState('')
   const [sitemapId, setSitemapId] = useState('')
-  const [limitToView, setLimitToView] = useState(true)
+
+  const areaBbox =
+    searchArea.kind === 'view' ? mapBounds : searchArea.kind === 'anywhere' ? null : searchArea.bbox
+  // A box or feature area that hasn't been drawn or picked yet.
+  const areaMissing = searchArea.kind !== 'view' && searchArea.kind !== 'anywhere' && !areaBbox
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     runSearch({
       term,
       sitemapId: sitemapId || undefined,
-      bbox: limitToView ? (mapBounds ?? undefined) : undefined,
+      bbox: areaBbox ?? undefined,
     })
   }
 
@@ -35,6 +43,8 @@ export function SearchTab() {
   }
 
   const isSearching = searchResource.status === 'loading'
+  // A name, an area, or both.
+  const canSearch = (!!term.trim() || !!areaBbox) && !areaMissing && !isSearching
   const filter = useFeatureFilter(searchResource.data ?? [], searchResource.data)
 
   return (
@@ -49,19 +59,17 @@ export function SearchTab() {
         />
         <div className="search-row">
           <SourcePicker value={sitemapId} onChange={setSitemapId} />
-          <button type="submit" disabled={!term.trim() || isSearching}>
+          <button type="submit" disabled={!canSearch}>
             {isSearching && <span className="spinner" aria-hidden="true" />}
             {isSearching ? 'Searching…' : 'Search'}
           </button>
         </div>
-        <label className="search-checkbox">
-          <input
-            type="checkbox"
-            checked={limitToView}
-            onChange={(e) => setLimitToView(e.target.checked)}
-          />
-          Restrict search to current map view
-        </label>
+        <SearchAreaPicker
+          area={searchArea}
+          picking={areaPicking}
+          onChange={setSearchArea}
+          onPick={setAreaPicking}
+        />
       </form>
 
       {searchResource.status === 'loading' && (
@@ -112,6 +120,93 @@ export function SearchTab() {
           ))}
         </ul>
       )}
+    </div>
+  )
+}
+
+const AREA_OPTIONS: { kind: SearchArea['kind']; label: string }[] = [
+  { kind: 'view', label: 'Map view' },
+  { kind: 'box', label: 'Draw box' },
+  { kind: 'feature', label: 'Feature' },
+  { kind: 'anywhere', label: 'Anywhere' },
+]
+
+// Where the search looks, and for a box or feature area, drawing or picking it.
+function SearchAreaPicker({
+  area,
+  picking,
+  onChange,
+  onPick,
+}: {
+  area: SearchArea
+  picking: 'box' | 'feature' | null
+  onChange: (area: SearchArea) => void
+  onPick: (picking: 'box' | 'feature' | null) => void
+}) {
+  function choose(kind: SearchArea['kind']) {
+    if (kind === area.kind) return
+    if (kind === 'box') onChange({ kind, bbox: null })
+    else if (kind === 'feature') onChange({ kind, bbox: null, name: null, uri: null })
+    else onChange({ kind })
+  }
+
+  let note: ReactNode
+  if (area.kind === 'view') {
+    note = 'Features entirely inside the current map view.'
+  } else if (area.kind === 'anywhere') {
+    note = 'Everywhere, so a name is needed.'
+  } else if (picking) {
+    note = (
+      <>
+        {picking === 'box'
+          ? 'Drag on the map to draw a box.'
+          : 'Click a feature on the map: a layer feature, a river or a result.'}{' '}
+        <button type="button" className="link-button" onClick={() => onPick(null)}>
+          Cancel
+        </button>
+      </>
+    )
+  } else {
+    const kind = area.kind
+    note = (
+      <>
+        {!area.bbox
+          ? kind === 'box'
+            ? 'No box drawn yet.'
+            : 'No feature picked yet.'
+          : kind === 'box'
+            ? 'Features entirely inside the box you drew.'
+            : `Features entirely inside the extent of ${area.name ?? 'the feature you picked'}.`}{' '}
+        <button type="button" className="link-button" onClick={() => onPick(kind)}>
+          {area.bbox
+            ? kind === 'box'
+              ? 'Redraw'
+              : 'Pick another'
+            : kind === 'box'
+              ? 'Draw'
+              : 'Pick'}
+        </button>
+      </>
+    )
+  }
+
+  return (
+    <div className="search-area">
+      <div className="search-area-options" role="radiogroup" aria-label="Search area">
+        {AREA_OPTIONS.map((option) => (
+          <button
+            key={option.kind}
+            type="button"
+            role="radio"
+            aria-checked={area.kind === option.kind}
+            className={area.kind === option.kind ? 'active' : ''}
+            onClick={() => choose(option.kind)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <p className="search-area-note">{note}</p>
     </div>
   )
 }

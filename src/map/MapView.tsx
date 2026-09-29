@@ -39,7 +39,8 @@ import {
 import { RiverRunner } from './RiverRunner'
 import { renderFloodDepth } from '../analysis/floodDepth'
 import { whenStyleReady } from './styleReady'
-import { computeBounds } from '../lib/geo'
+import type { Bbox } from '../lib/features'
+import { computeBounds, geometryBounds } from '../lib/geo'
 import { isShapeFeature, sitemapKey } from '../lib/features'
 import { normalizeSitemapId } from '../lib/sitemaps'
 import { useExplorer } from '../state/ExplorerContext'
@@ -68,6 +69,8 @@ import {
   downstreamPathLayer,
   FLOOD_DEPTH_SOURCE_ID,
   floodDepthLayer,
+  SEARCH_AREA_SOURCE_ID,
+  searchAreaLayers,
   POINT_GEOMETRY_FILTER,
   PMTILES_PREFIX,
   mainstemLineOpacity,
@@ -133,6 +136,7 @@ const APP_SOURCE_IDS = new Set([
   ANALYSIS_SOURCE_ID,
   DOWNSTREAM_PATH_SOURCE_ID,
   FLOOD_DEPTH_SOURCE_ID,
+  SEARCH_AREA_SOURCE_ID,
 ])
 
 // Also covers each PMTiles export's source, whose ids aren't known up front.
@@ -211,6 +215,41 @@ function keepAppLayers(
   return { ...next, sources, layers: [...next.layers, ...appLayers], terrain: previous.terrain }
 }
 
+function lngLatBbox(a: MapMouseEvent, b: MapMouseEvent): Bbox {
+  return [
+    Math.min(a.lngLat.lng, b.lngLat.lng),
+    Math.min(a.lngLat.lat, b.lngLat.lat),
+    Math.max(a.lngLat.lng, b.lngLat.lng),
+    Math.max(a.lngLat.lat, b.lngLat.lat),
+  ]
+}
+
+function bboxFeatures(bbox: Bbox | null): FeatureCollection {
+  if (!bbox) return { type: 'FeatureCollection', features: [] }
+  const [west, south, east, north] = bbox
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [west, south],
+              [east, south],
+              [east, north],
+              [west, north],
+              [west, south],
+            ],
+          ],
+        },
+      },
+    ],
+  }
+}
+
 function toFeatureCollection(features: GraphFeature[]): FeatureCollection<Geometry> {
   return {
     type: 'FeatureCollection',
@@ -233,6 +272,8 @@ export function MapView() {
   const pmtilesClick = useRef<((features: MapGeoJSONFeature[], e: MapMouseEvent) => void) | null>(
     null,
   )
+  // Set while picking a search area: takes over clicks on the map.
+  const areaClick = useRef<((features: MapGeoJSONFeature[]) => void) | null>(null)
   const [map, setMap] = useState<MaplibreMap | null>(null)
   const {
     selectedMainstem,
@@ -262,7 +303,19 @@ export function MapView() {
     selectMainstem,
     selectNode,
     reportMapBounds,
+    searchArea,
+    areaPicking,
+    setAreaPicking,
+    pickAreaBox,
+    pickAreaFeature,
   } = useExplorer()
+
+  // The context's actions change identity as it updates; the picking effects
+  // below read the latest ones without restarting mid-drag.
+  const areaActions = useRef({ setAreaPicking, pickAreaBox, pickAreaFeature })
+  useEffect(() => {
+    areaActions.current = { setAreaPicking, pickAreaBox, pickAreaFeature }
+  }, [setAreaPicking, pickAreaBox, pickAreaFeature])
 
   // The basemap the map currently shows. Read (not depended on) when the map is
   // created, so switching basemaps restyles the existing map instead of
@@ -303,9 +356,14 @@ export function MapView() {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
       })
+      map.addSource(SEARCH_AREA_SOURCE_ID, {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      })
 
       for (const layer of mainstemLayers) map.addLayer(layer)
       map.addLayer(downstreamPathLayer)
+      for (const layer of searchAreaLayers) map.addLayer(layer)
       map.addLayer(associatedFeaturesFillLayer)
       map.addLayer(associatedFeaturesLineLayer)
       map.addLayer(associatedFeaturesLayer)
@@ -373,11 +431,16 @@ export function MapView() {
       // One handler for every clickable layer, so only the topmost feature
       // under the cursor responds.
       map.on('click', (e: MapMouseEvent) => {
+        const pickArea = areaClick.current
         const inspect = pmtilesClick.current
         let features: MapGeoJSONFeature[]
         try {
-          features = clickableFeaturesAt(map, e.point, inspect !== null)
+          features = clickableFeaturesAt(map, e.point, !!pickArea || inspect !== null)
         } catch {
+          return
+        }
+        if (pickArea) {
+          pickArea(features)
           return
         }
         inspect?.(features, e)
@@ -830,9 +893,95 @@ export function MapView() {
     }
   }, [map, searchResource.data])
 
+  // The search area outlined on the map, once there is one.
+  const areaBbox =
+    searchArea.kind === 'box' || searchArea.kind === 'feature' ? searchArea.bbox : null
+  useEffect(() => {
+    if (!map) return
+    const source = map.getSource(SEARCH_AREA_SOURCE_ID) as GeoJSONSource | undefined
+    source?.setData(bboxFeatures(areaBbox))
+    // Also when picking ends, to clear a box drawn but not kept.
+  }, [map, areaBbox, areaPicking])
+
+  // Picking a search area: a crosshair, Esc to stop, and while drawing a box,
+  // dragging draws instead of panning.
+  useEffect(() => {
+    if (!map || !areaPicking) return
+    const container = map.getContainer()
+    container.classList.add('area-picking')
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') areaActions.current.setAreaPicking(null)
+    }
+    window.addEventListener('keydown', onKey)
+
+    const source = map.getSource(SEARCH_AREA_SOURCE_ID) as GeoJSONSource | undefined
+    let start: MapMouseEvent | null = null
+    const onDown = (e: MapMouseEvent) => {
+      if (e.originalEvent.button !== 0) return
+      start = e
+    }
+    const onMove = (e: MapMouseEvent) => {
+      if (start) source?.setData(bboxFeatures(lngLatBbox(start, e)))
+    }
+    const onUp = (e: MapMouseEvent) => {
+      if (!start) return
+      const from = start
+      start = null
+      // Too small to mean a box; likely a stray click.
+      if (Math.abs(e.point.x - from.point.x) < 5 || Math.abs(e.point.y - from.point.y) < 5) {
+        source?.setData(bboxFeatures(null))
+        return
+      }
+      areaActions.current.pickAreaBox(lngLatBbox(from, e))
+    }
+
+    if (areaPicking === 'box') {
+      map.dragPan.disable()
+      map.boxZoom.disable()
+      map.on('mousedown', onDown)
+      map.on('mousemove', onMove)
+      map.on('mouseup', onUp)
+      // Clicks (a press without a drag) do nothing while drawing.
+      areaClick.current = () => {}
+    } else {
+      areaClick.current = (features) => {
+        const feature = features[0]
+        const bbox = feature && geometryBounds(feature.geometry)
+        if (!feature || !bbox) return
+        const props = feature.properties
+        const uri = isPmtilesFeature(feature) ? props.id : props.uri
+        const name = props.feature_name ?? props.name_at_outlet ?? props.name
+        areaActions.current.pickAreaFeature({
+          uri: typeof uri === 'string' ? uri : null,
+          name: typeof name === 'string' ? name : null,
+          bbox,
+        })
+      }
+    }
+
+    return () => {
+      container.classList.remove('area-picking')
+      window.removeEventListener('keydown', onKey)
+      areaClick.current = null
+      map.off('mousedown', onDown)
+      map.off('mousemove', onMove)
+      map.off('mouseup', onUp)
+      map.dragPan.enable()
+      map.boxZoom.enable()
+    }
+  }, [map, areaPicking])
+
   return (
     <>
       <div ref={containerRef} className="map-view" />
+      {areaPicking && (
+        <div className="map-hint" role="status">
+          {areaPicking === 'box'
+            ? 'Drag on the map to draw the search area'
+            : 'Click a feature to search within its extent'}
+          <span>Esc to cancel</span>
+        </div>
+      )}
       {map && riverRunner && <RiverRunner key={riverRunner.uri} map={map} start={riverRunner} />}
     </>
   )

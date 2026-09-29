@@ -432,3 +432,22 @@ export function pmtilesLayerSpecs(
     },
   ]
 }
+
+// The feature search's area (a drawn box or a picked feature's extent), and
+// the box while it's being drawn. Dashed, so it doesn't read as a feature.
+export const SEARCH_AREA_SOURCE_ID = 'search-area'
+
+export const searchAreaLayers: LayerSpecification[] = [
+  {
+    id: 'search-area-fill',
+    type: 'fill',
+    source: SEARCH_AREA_SOURCE_ID,
+    paint: { 'fill-color': '#12b0a8', 'fill-opacity': 0.08 },
+  },
+  {
+    id: 'search-area-line',
+    type: 'line',
+    source: SEARCH_AREA_SOURCE_ID,
+    paint: { 'line-color': '#0b7d77', 'line-width': 2, 'line-dasharray': [3, 2] },
+  },
+]

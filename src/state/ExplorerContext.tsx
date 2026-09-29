@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, useReducer, useState, type ReactNod
 import { buildSitemapColorScale, type SitemapColorScale } from '../lib/colors'
 import { fetchDatasetSummaries, type DatasetSummary } from '../lib/datasets'
 import {
+  fetchFeatureExtent,
   loadMainstemFeatures,
   searchFeatures,
   searchResourceKey,
@@ -28,6 +29,26 @@ import type { FloodDepth } from '../analysis/floodDepth'
 import { fetchDownstreamPath } from '../analysis/downstream'
 import type { RunnerLeg } from '../lib/riverRunner'
 import { useAsyncResource } from './useAsyncResource'
+
+// Where a feature search looks: anywhere, the current map view, a box drawn
+// on the map, or the extent of a feature clicked on the map. A box or feature
+// area has no bbox until one's been drawn or picked.
+export type SearchArea =
+  | { kind: 'anywhere' }
+  | { kind: 'view' }
+  | { kind: 'box'; bbox: Bbox | null }
+  | { kind: 'feature'; bbox: Bbox | null; name: string | null; uri: string | null }
+
+// Picking an area on the map: dragging out a box, or clicking a feature.
+export type AreaPicking = 'box' | 'feature' | null
+
+// A feature clicked while picking an area. `bbox` is from its geometry on the
+// map, which tiles may have cut short; the full extent is fetched to replace it.
+export interface PickedAreaFeature {
+  uri: string | null
+  name: string | null
+  bbox: Bbox
+}
 
 interface ExplorerState {
   selectedMainstem: MainstemFeatureProps | null
@@ -88,6 +109,8 @@ interface ExplorerContextValue extends ExplorerState {
   pmtilesInspect: boolean
   // Whether the reference mainstem network, the map's default layer, is drawn.
   showMainstems: boolean
+  searchArea: SearchArea
+  areaPicking: AreaPicking
   // Color and opacity set on stack layers, by stack id. Kept when a layer is
   // switched off, so it comes back looking the same.
   layerStyles: ReadonlyMap<string, LayerStyle>
@@ -133,6 +156,12 @@ interface ExplorerContextValue extends ExplorerState {
   moveStackLayer: (id: string, index: number) => void
   setPmtilesInspect: (on: boolean) => void
   setShowMainstems: (show: boolean) => void
+  // Choosing a box or feature area without one yet starts picking it.
+  setSearchArea: (area: SearchArea) => void
+  setAreaPicking: (picking: AreaPicking) => void
+  // Reported by the map when picking finishes.
+  pickAreaBox: (bbox: Bbox) => void
+  pickAreaFeature: (feature: PickedAreaFeature) => void
   // null resets the layer to its default look.
   setLayerStyle: (id: string, style: LayerStyle | null) => void
   setBasemap: (basemap: BasemapId) => void
@@ -185,6 +214,8 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
   ])
   const [pmtilesInspect, setPmtilesInspect] = useState(false)
   const [showMainstems, setShowMainstems] = useState(true)
+  const [searchArea, setSearchAreaState] = useState<SearchArea>({ kind: 'view' })
+  const [areaPicking, setAreaPicking] = useState<AreaPicking>(null)
   const [layerStyles, setLayerStyles] = useState<ReadonlyMap<string, LayerStyle>>(new Map())
 
   const [basemap, setBasemap] = useState<BasemapId>(DEFAULT_BASEMAP)
@@ -229,6 +260,8 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       layerStack,
       pmtilesInspect,
       showMainstems,
+      searchArea,
+      areaPicking,
       layerStyles,
       basemap,
       terrain3d,
@@ -313,6 +346,33 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
         }),
       setPmtilesInspect,
       setShowMainstems,
+      setSearchArea: (area) => {
+        setSearchAreaState(area)
+        setAreaPicking(
+          (area.kind === 'box' || area.kind === 'feature') && !area.bbox ? area.kind : null,
+        )
+      },
+      setAreaPicking,
+      pickAreaBox: (bbox) => {
+        setSearchAreaState({ kind: 'box', bbox })
+        setAreaPicking(null)
+      },
+      pickAreaFeature: ({ uri, name, bbox }) => {
+        setSearchAreaState({ kind: 'feature', uri, name, bbox })
+        setAreaPicking(null)
+        if (!uri) return
+        fetchFeatureExtent(uri).then(
+          (full) => {
+            if (!full) return
+            // Unless another area has been picked meanwhile.
+            setSearchAreaState((area) =>
+              area.kind === 'feature' && area.uri === uri ? { ...area, bbox: full } : area,
+            )
+          },
+          // The extent from the map stands in.
+          () => {},
+        )
+      },
       setLayerStyle: (id, style) =>
         setLayerStyles((styles) => {
           const next = new Map(styles)
@@ -340,6 +400,8 @@ export function ExplorerProvider({ children }: { children: ReactNode }) {
       layerStack,
       pmtilesInspect,
       showMainstems,
+      searchArea,
+      areaPicking,
       layerStyles,
       mainstemUri,
       basemap,

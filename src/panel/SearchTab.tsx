@@ -4,6 +4,7 @@ import { normalizeSitemapId } from '../lib/sitemaps'
 import { useExplorer } from '../state/ExplorerContext'
 import { useFeatureFilter } from './FeatureFilter'
 import { PlaceSearch } from './PlaceSearch'
+import { SourcePicker } from './SourcePicker'
 
 export function SearchTab() {
   const {
@@ -11,7 +12,6 @@ export function SearchTab() {
     selectNode,
     flyTo,
     searchResource,
-    sitemapEntriesResource,
     sitemapColorScale,
     mapBounds,
     runSearch,
@@ -48,18 +48,7 @@ export function SearchTab() {
           onChange={(e) => setTerm(e.target.value)}
         />
         <div className="search-row">
-          <select
-            value={sitemapId}
-            onChange={(e) => setSitemapId(e.target.value)}
-            disabled={sitemapEntriesResource.status !== 'success'}
-          >
-            <option value="">All sources</option>
-            {sitemapEntriesResource.data?.map((entry) => (
-              <option key={entry.id} value={entry.id} title={entry.description}>
-                {entry.id}
-              </option>
-            ))}
-          </select>
+          <SourcePicker value={sitemapId} onChange={setSitemapId} />
           <button type="submit" disabled={!term.trim() || isSearching}>
             {isSearching && <span className="spinner" aria-hidden="true" />}
             {isSearching ? 'Searching…' : 'Search'}

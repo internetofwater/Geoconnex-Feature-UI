@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { colorForSitemap, type SitemapColorScale } from '../lib/colors'
-import { sitemapKey } from '../lib/features'
+import { isShapeFeature, sitemapKey } from '../lib/features'
 import type { GraphFeature } from '../lib/types'
 import { FilterIcon } from './FilterIcon'
+import { InfoIcon } from './InfoIcon'
 
 function matches(feature: GraphFeature, needle: string): boolean {
   return [feature.name, feature.description, feature.sitemap, feature.uri].some((field) =>
@@ -15,7 +16,11 @@ export interface SitemapToggles {
   hidden: ReadonlySet<string>
   onToggle: (sitemap: string) => void
   onShowAll: () => void
+  onHideAll: (sitemaps: string[]) => void
   colorScale: SitemapColorScale
+  // Polygons and lines as one group, apart from the monitoring location points.
+  hideShapes: boolean
+  onToggleShapes: () => void
 }
 
 /**
@@ -23,7 +28,7 @@ export interface SitemapToggles {
  * identifies the list (a mainstem IRI, a search's result array) — when it
  * changes the filter closes and clears, so a stale filter never silently hides
  * a new result set. With `sitemaps`, the open filter also lists a checkbox per
- * distinct sitemap in the list.
+ * distinct sitemap in the list, and one for its polygon and line features.
  */
 export function useFeatureFilter(
   features: GraphFeature[],
@@ -31,30 +36,42 @@ export function useFeatureFilter(
   sitemaps?: SitemapToggles,
 ) {
   const [state, setState] = useState({ key: resetKey, open: false, text: '' })
+  const [shapesInfoOpen, setShapesInfoOpen] = useState(false)
+  const shapesInfoId = useId()
   if (!Object.is(state.key, resetKey)) {
     setState({ key: resetKey, open: false, text: '' })
   }
 
   const needle = state.text.trim().toLowerCase()
   const hidden = sitemaps?.hidden
+  const hideShapes = !!sitemaps?.hideShapes
   const filtered = features.filter(
-    (feature) => !hidden?.has(sitemapKey(feature)) && (!needle || matches(feature, needle)),
+    (feature) =>
+      !hidden?.has(sitemapKey(feature)) &&
+      !(hideShapes && isShapeFeature(feature)) &&
+      (!needle || matches(feature, needle)),
   )
 
   const sitemapCounts = new Map<string, number>()
+  let shapeCount = 0
   if (sitemaps) {
     for (const feature of features) {
       const key = sitemapKey(feature)
       sitemapCounts.set(key, (sitemapCounts.get(key) ?? 0) + 1)
+      if (isShapeFeature(feature)) shapeCount++
     }
   }
   const sitemapList = [...sitemapCounts].sort(([a], [b]) => a.localeCompare(b))
-  const anyHidden = !!hidden?.size
+  const anyHidden = !!hidden?.size || hideShapes
+  // One button flips between the two ends: hide every source when all are
+  // showing, otherwise show them all again.
+  const noSourcesHidden = !sitemapList.some(([sitemap]) => hidden?.has(sitemap))
 
   // Closing clears the text but leaves sitemap choices alone: those also drive
-  // the map, and the button stays highlighted while any are hidden.
+  // the map, and the button stays highlighted while any sources are hidden.
   const close = () => setState((prev) => ({ ...prev, open: false, text: '' }))
-  const active = state.open || anyHidden
+  // Shapes start hidden, so they don't light the button on their own.
+  const active = state.open || !!hidden?.size
 
   const toggleButton = (
     <button
@@ -93,7 +110,14 @@ export function useFeatureFilter(
         <fieldset className="sitemap-toggles">
           <legend>
             Sources
-            {anyHidden && (
+            {noSourcesHidden ? (
+              <button
+                type="button"
+                onClick={() => sitemaps.onHideAll(sitemapList.map(([sitemap]) => sitemap))}
+              >
+                Show none
+              </button>
+            ) : (
               <button type="button" onClick={sitemaps.onShowAll}>
                 Show all
               </button>
@@ -116,12 +140,49 @@ export function useFeatureFilter(
           ))}
         </fieldset>
       )}
+      {sitemaps && shapeCount > 0 && (
+        <fieldset className="sitemap-toggles">
+          <legend>Geometry</legend>
+          <label className="sitemap-toggle">
+            <input type="checkbox" checked={!hideShapes} onChange={sitemaps.onToggleShapes} />
+            <span className="sitemap-toggle-name">
+              Polygons and lines
+              <button
+                type="button"
+                className={shapesInfoOpen ? 'toggle-info-button open' : 'toggle-info-button'}
+                aria-expanded={shapesInfoOpen}
+                aria-controls={shapesInfoId}
+                aria-label="What are polygons and lines?"
+                title="What are polygons and lines?"
+                onClick={(e) => {
+                  // Inside the label; don't let the click toggle the checkbox too.
+                  e.preventDefault()
+                  setShapesInfoOpen((open) => !open)
+                }}
+              >
+                <InfoIcon />
+              </button>
+            </span>
+            <span className="sitemap-toggle-count">{shapeCount.toLocaleString()}</span>
+          </label>
+          {shapesInfoOpen && (
+            <p id={shapesInfoId} className="toggle-info">
+              These often represent reference boundaries like HUCs, not necessarily physical
+              monitoring locations. They're hidden by default since they can cover much of the map.
+            </p>
+          )}
+        </fieldset>
+      )}
     </div>
   )
 
   const emptyMessage = features.length > 0 && filtered.length === 0 && (
     <p className="panel-status">
-      {needle ? `No features match “${state.text.trim()}”.` : 'All sources are hidden.'}
+      {needle
+        ? `No features match “${state.text.trim()}”.`
+        : hidden?.size
+          ? 'Everything is hidden by the filter.'
+          : 'Only polygons and lines here, which are hidden. Turn them on in the filter.'}
     </p>
   )
 

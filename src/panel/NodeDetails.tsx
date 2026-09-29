@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { compactUri, formatLiteralValue, tripleRowsToCsv } from '../lib/rdf'
 import type { TripleRow } from '../lib/types'
 import { useExplorer } from '../state/ExplorerContext'
+import { InfoIcon } from './InfoIcon'
 
 function CopyTableIcon() {
   return (
@@ -31,6 +32,8 @@ export function NodeDetails() {
   const { selectedNode, nodeResource, mainstemResource, searchResource, selectNode } =
     useExplorer()
   const [copied, setCopied] = useState(false)
+  const [showInfo, setShowInfo] = useState(false)
+  const infoId = useId()
 
   if (!selectedNode) return null
 
@@ -74,11 +77,41 @@ export function NodeDetails() {
 
   return (
     <div className="node-details">
-      <h2 className="node-details-title" title={selectedNode}>
-        <a href={selectedNode} target="_blank" rel="noreferrer">
-          {title}
-        </a>
-      </h2>
+      <div className="node-details-header">
+        <h2 className="node-details-title" title={selectedNode}>
+          <a href={selectedNode} target="_blank" rel="noreferrer">
+            {title}
+          </a>
+        </h2>
+        <button
+          type="button"
+          className={showInfo ? 'node-details-info-button open' : 'node-details-info-button'}
+          aria-expanded={showInfo}
+          aria-controls={infoId}
+          aria-label={`${showInfo ? 'Hide' : 'Show'} what these properties are`}
+          title="About these properties"
+          onClick={() => setShowInfo((open) => !open)}
+        >
+          <InfoIcon />
+        </button>
+      </div>
+      {showInfo && (
+        <div id={infoId} className="node-details-info">
+          <p>
+            These are all the RDF properties defined in this feature's JSON-LD. Each row is a link
+            in the Geoconnex graph: a predicate joining this feature to a value or to another
+            feature.
+          </p>
+          <p>
+            <strong>Referenced by</strong> lists the reverse: other features whose JSON-LD points
+            to this one.
+          </p>
+          <p>
+            Because they're in the graph, any of them can be queried with SPARQL. See the Querying
+            tab for examples.
+          </p>
+        </div>
+      )}
 
       {nodeResource.status === 'loading' && <p className="panel-status">Loading graph edges…</p>}
       {nodeResource.status === 'error' && (

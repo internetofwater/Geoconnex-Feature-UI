@@ -18,6 +18,12 @@ export function sitemapKey(feature: GraphFeature): string {
   return feature.sitemap ?? ''
 }
 
+// Points are the monitoring locations; everything else (catchments, reaches,
+// other areas and lines) is a shape the filter can hide as a group.
+export function isShapeFeature(feature: GraphFeature): boolean {
+  return feature.geometry.type !== 'Point' && feature.geometry.type !== 'MultiPoint'
+}
+
 export async function fetchMainstemFeatures(
   mainstemUri: string,
   signal: AbortSignal,

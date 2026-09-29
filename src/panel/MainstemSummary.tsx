@@ -38,6 +38,9 @@ export function MainstemSummary() {
     hiddenSitemaps,
     toggleSitemap,
     showAllSitemaps,
+    hideAllSitemaps,
+    hideShapes,
+    toggleShapes,
     selectNode,
     flyTo,
     riverRunner,
@@ -47,7 +50,10 @@ export function MainstemSummary() {
     hidden: hiddenSitemaps,
     onToggle: toggleSitemap,
     onShowAll: showAllSitemaps,
+    onHideAll: hideAllSitemaps,
     colorScale: sitemapColorScale,
+    hideShapes,
+    onToggleShapes: toggleShapes,
   })
   // Length and drainage area are secondary, so they stay tucked away until asked
   // for. Like the filter, the choice resets when a different mainstem is picked.

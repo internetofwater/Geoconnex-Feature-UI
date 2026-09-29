@@ -1,4 +1,8 @@
-import type { RasterDEMSourceSpecification, StyleSpecification } from 'maplibre-gl'
+import type {
+  RasterDEMSourceSpecification,
+  StyleSpecification,
+  VectorSourceSpecification,
+} from 'maplibre-gl'
 
 export type BasemapId = 'light' | 'streets' | 'dark' | 'topo' | 'satellite'
 
@@ -75,6 +79,26 @@ export const HILLSHADE_SOURCE_ID = 'hillshade-dem'
 export const HILLSHADE_LAYER_ID = 'terrain-hillshade'
 export const TERRAIN_EXAGGERATION = 1.5
 export const TERRAIN_PITCH = 60
+
+// Building footprints with heights from OpenFreeMap's OpenMapTiles vector
+// tiles, the same ones behind the vector basemaps. Added as the app's own source
+// so 3D buildings work over the raster basemaps too.
+export const BUILDINGS_SOURCE_ID = 'buildings-3d'
+export const BUILDINGS_LAYER_ID = 'buildings-3d'
+// OpenMapTiles only carries building footprints from zoom 13, and they're too
+// small to read as buildings until 14.
+export const BUILDINGS_MINZOOM = 14
+export const BUILDINGS_PITCH = 50
+export const BUILDINGS_SOURCE: VectorSourceSpecification = {
+  type: 'vector',
+  url: 'https://tiles.openfreemap.org/planet',
+}
+
+// Pale buildings read on light and imagery basemaps; the dark basemap needs a
+// darker shade to stay low-glare.
+export function buildingColor(basemap: BasemapId): string {
+  return basemap === 'dark' ? 'hsl(220,8%,26%)' : 'hsl(35,8%,85%)'
+}
 
 export const ELEVATION_SOURCE: RasterDEMSourceSpecification = {
   type: 'raster-dem',

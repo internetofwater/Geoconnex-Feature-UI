@@ -35,7 +35,15 @@ const DRAINAGE_MEDIUM = 1600
 export const MAINSTEM_HIGHLIGHT_LAYER_ID = 'mainstems-highlight'
 export const MAINSTEM_HIT_LAYER_ID = 'mainstems-hit-area'
 
-const OPACITY_EXPRESSION: ExpressionSpecification = ['step', ['zoom'], 0.3, 6, 0.85]
+// Faint when zoomed out, where the network is dense. `scale` is the opacity
+// set in the Layers tab.
+export function mainstemLineOpacity(scale: number): ExpressionSpecification {
+  return ['step', ['zoom'], 0.3 * scale, 6, 0.85 * scale]
+}
+
+const OPACITY_EXPRESSION = mainstemLineOpacity(1)
+// The large rivers' blue, which stands for the whole network in the Layers tab.
+export const MAINSTEM_LARGE_COLOR = '#08589e'
 
 export const mainstemLayers: LayerSpecification[] = [
   {
@@ -90,7 +98,7 @@ export const mainstemLayers: LayerSpecification[] = [
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: {
       'line-opacity': OPACITY_EXPRESSION,
-      'line-color': '#08589e',
+      'line-color': MAINSTEM_LARGE_COLOR,
       'line-width': 4,
     },
   },
@@ -339,6 +347,17 @@ export const analysisLayers: LayerSpecification[] = [
 // the coral selected-river highlight.
 export const DOWNSTREAM_PATH_SOURCE_ID = 'downstream-path'
 
+// Flood depth over the view it was computed for: an image source, created only
+// once there's an image to show, since maplibre needs its URL up front.
+export const FLOOD_DEPTH_SOURCE_ID = 'flood-depth'
+
+export const floodDepthLayer: LayerSpecification = {
+  id: 'flood-depth-raster',
+  type: 'raster',
+  source: FLOOD_DEPTH_SOURCE_ID,
+  paint: { 'raster-opacity': 0.75, 'raster-fade-duration': 0 },
+}
+
 export const downstreamPathLayer: LayerSpecification = {
   id: 'downstream-path-line',
   type: 'line',
@@ -349,4 +368,67 @@ export const downstreamPathLayer: LayerSpecification = {
     'line-width': ['interpolate', ['linear'], ['zoom'], 4, 3, 10, 5, 14, 7],
     'line-opacity': 0.9,
   },
+}
+
+// Geoconnex PMTiles exports (Layers tab). Each archive gets its own source and
+// a fill, outline and circle layer, filtered by geometry type so one set of
+// layers draws any export. They sit under the mainstems, so the river network
+// and selected features stay on top.
+export const PMTILES_PREFIX = 'pmtiles:'
+const PMTILES_POLYGON_FILTER: ExpressionSpecification = [
+  'in',
+  ['geometry-type'],
+  ['literal', ['Polygon', 'MultiPolygon']],
+]
+
+export function pmtilesSourceId(id: string): string {
+  return `${PMTILES_PREFIX}${id}`
+}
+
+export function pmtilesLayerSpecs(
+  id: string,
+  sourceLayer: string,
+  color: string,
+  opacity: number,
+): LayerSpecification[] {
+  const source = pmtilesSourceId(id)
+  return [
+    {
+      id: `${source}:fill`,
+      type: 'fill',
+      source,
+      'source-layer': sourceLayer,
+      filter: PMTILES_POLYGON_FILTER,
+      paint: { 'fill-color': color, 'fill-opacity': 0.12 * opacity },
+    },
+    {
+      // Lines, and polygon outlines.
+      id: `${source}:line`,
+      type: 'line',
+      source,
+      'source-layer': sourceLayer,
+      filter: ['!', POINT_GEOMETRY_FILTER],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': color,
+        'line-opacity': opacity,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.6, 10, 1.5, 14, 2.5],
+      },
+    },
+    {
+      id: `${source}:circle`,
+      type: 'circle',
+      source,
+      'source-layer': sourceLayer,
+      filter: POINT_GEOMETRY_FILTER,
+      paint: {
+        'circle-color': color,
+        'circle-opacity': opacity,
+        'circle-stroke-opacity': opacity,
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 2, 10, 4, 14, 6],
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 3, 0.3, 10, 1],
+      },
+    },
+  ]
 }

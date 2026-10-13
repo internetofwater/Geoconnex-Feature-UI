@@ -3,7 +3,7 @@ import { PMTiles, Protocol } from 'pmtiles'
 // Geoconnex's nightly PMTiles exports, one archive per sitemap, named after the
 // sitemap id (e.g. `epa:wqp.pmtiles`). The bucket's JSON listing is public and
 // CORS-enabled, so the set of layers is discovered at runtime.
-const BUCKET = 'metadata-geoconnex-us'
+const BUCKET = 'harvest-geoconnex-us'
 const PREFIX = 'exports/pmtiles/'
 const LISTING_URL = `https://storage.googleapis.com/storage/v1/b/${BUCKET}/o`
 const PUBLIC_BASE_URL = `https://storage.googleapis.com/${BUCKET}/`

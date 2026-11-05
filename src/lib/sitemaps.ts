@@ -1,5 +1,6 @@
 export interface SitemapEntry {
   id: string
+  name?: string
   description?: string
 }
 
@@ -21,7 +22,8 @@ export async function fetchSitemapEntries(signal: AbortSignal): Promise<SitemapE
     const description = node
       .getElementsByTagName('geoconnex:dataset_description')[0]
       ?.textContent?.trim()
-    entries.push({ id, description: description || undefined })
+    const name = node.getElementsByTagName('geoconnex:dataset_name')[0]?.textContent?.trim()
+    entries.push({ id, name: name || undefined, description: description || undefined })
   }
 
   entries.sort((a, b) => a.id.localeCompare(b.id))

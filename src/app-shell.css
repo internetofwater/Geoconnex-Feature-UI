@@ -1171,6 +1171,35 @@
   background: var(--accent-bg);
 }
 
+.pmtiles-all-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+}
+
+.pmtiles-all-header .pmtiles-all-heading {
+  margin: 0;
+}
+
+.pmtiles-catalog-link {
+  margin-left: auto;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--code-bg);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pmtiles-catalog-link:hover {
+  color: var(--text-h);
+  border-color: var(--text);
+}
+
 .pmtiles-stack h4,
 .pmtiles-all-heading {
   margin: 0 0 6px;

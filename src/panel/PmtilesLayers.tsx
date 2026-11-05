@@ -5,6 +5,9 @@ import { MAINSTEM_LARGE_COLOR } from '../map/layers'
 import { useExplorer } from '../state/ExplorerContext'
 import { SettingsIcon } from './SettingsIcon'
 
+const STAC_CATALOG_URL =
+  'https://browser.portolan-sdi.org/#/external/storage.googleapis.com/harvest-geoconnex-us/stac/catalog.json'
+
 // A color input only takes #rrggbb; let the browser convert the sitemap
 // colors' hsl() for it.
 let colorContext: CanvasRenderingContext2D | null = null
@@ -42,10 +45,9 @@ export function PmtilesLayers() {
   // The stack layer whose settings are open; one at a time.
   const [settingsFor, setSettingsFor] = useState<string | null>(null)
 
-  const descriptions = new Map(
-    (sitemapEntriesResource.data ?? []).map((entry) => [entry.id, entry.description]),
-  )
-  const titleFor = (id: string) => descriptions.get(id) || id
+  const entries = new Map((sitemapEntriesResource.data ?? []).map((entry) => [entry.id, entry]))
+  const titleFor = (id: string) => entries.get(id)?.name || id
+  const descriptionFor = (id: string) => entries.get(id)?.description
   const styleFor = (id: string) => layerStyles.get(id) ?? DEFAULT_LAYER_STYLE
   const defaultColorFor = (id: string) => sitemapColorScale.get(id) ?? OTHER_SITEMAP_COLOR
   const colorFor = (id: string) => styleFor(id).color ?? defaultColorFor(id)
@@ -53,7 +55,9 @@ export function PmtilesLayers() {
   const on = new Set(layerStack.map((layer) => layer.id))
   const needle = query.trim().toLowerCase()
   const shown = needle
-    ? exports.filter((e) => `${e.id} ${titleFor(e.id)}`.toLowerCase().includes(needle))
+    ? exports.filter((e) =>
+        `${e.id} ${titleFor(e.id)} ${descriptionFor(e.id) ?? ''}`.toLowerCase().includes(needle),
+      )
     : exports
 
   function drop(index: number) {
@@ -109,7 +113,7 @@ export function PmtilesLayers() {
                   ) : layer.status === 'error' ? (
                     <span className="panel-status-error">{layer.error}</span>
                   ) : (
-                    layer.id
+                    <span className="pmtiles-stack-description">{descriptionFor(layer.id)}</span>
                   )
                 }
                 visible={mainstems ? showMainstems : true}
@@ -147,7 +151,18 @@ export function PmtilesLayers() {
         </ol>
       </div>
 
-      <h4 className="pmtiles-all-heading">All layers</h4>
+      <div className="pmtiles-all-header">
+        <h4 className="pmtiles-all-heading">All layers</h4>
+        <a
+          className="pmtiles-catalog-link"
+          href={STAC_CATALOG_URL}
+          target="_blank"
+          rel="noreferrer"
+          title="Browse these layers as a STAC catalog in the Portolan viewer"
+        >
+          Open as STAC ↗
+        </a>
+      </div>
       {pmtilesExportsResource.status === 'loading' && (
         <p className="panel-status">Loading layers…</p>
       )}
@@ -176,7 +191,11 @@ export function PmtilesLayers() {
                   <span className="legend-swatch" style={{ backgroundColor: colorFor(layer.id) }} />
                   <span className="legend-text">
                     <span className="legend-label">{titleFor(layer.id)}</span>
-                    <span className="legend-id">{layer.id}</span>
+                    {descriptionFor(layer.id) && (
+                      <span className="legend-id pmtiles-stack-description">
+                        {descriptionFor(layer.id)}
+                      </span>
+                    )}
                   </span>
                 </label>
               </li>
